@@ -1268,7 +1268,7 @@ body::before {
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
               <h2 style="font-size:17px;font-weight:700;color:var(--text-primary)">基金组合每日追踪</h2>
-              <p style="font-size:12px;color:var(--text-muted)">8只基金 · 总成本 ¥91,360 · <span id="fundUpdateTime">更新于 --</span></p>
+              <p style="font-size:12px;color:var(--text-muted)">8只基金 · 总投入 <span id="fundHeaderCost">¥--</span> · <span id="fundUpdateTime">更新于 --</span></p>
             </div>
             <div style="text-align:right;">
               <div style="font-size:24px;font-weight:800;color:var(--text-primary)" id="fundTotalVal">--</div>
@@ -2814,27 +2814,32 @@ function renderFundTracker() {
   ];
 
   // 计算衍生值
+  // 注意：f.cost 存储的是当前现金余额（持仓金额），不是投入成本
   funds.forEach(function(f) {
     f.costNav = f.nav / (1 + f.ret);
-    f.shares = Math.round(f.cost / f.costNav);
-    f.curValue = f.shares * f.nav;
-    f.pnl = f.curValue - f.cost;
+    f.investedCost = f.cost / (1 + f.ret);  // 真实投入成本 = 现金余额 / (1 + 收益率)
+    f.shares = Math.round(f.cost / f.nav);   // 持有份额 = 现金余额 / 当前净值
+    f.curValue = f.cost;                      // 当前市值 = 现金余额
+    f.pnl = f.curValue - f.investedCost;      // 持仓盈亏 = 当前市值 - 投入成本
     f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
   });
 
   // 汇总
   var totalCost = 0, totalValue = 0, winners = [], losers = [];
   funds.forEach(function(f) {
-    totalCost += f.cost;
-    totalValue += f.curValue;
+    totalCost += f.investedCost;  // 总投入成本
+    totalValue += f.curValue;     // 总当前市值
     if (f.ret >= 0) winners.push(f); else losers.push(f);
   });
   var totalPnl = totalValue - totalCost;
   var totalRet = totalPnl / totalCost;
 
   document.getElementById('fundTotalVal').textContent = '¥' + totalValue.toLocaleString('zh-CN', {maximumFractionDigits: 0});
-  document.getElementById('fundTotalPnl').textContent = '总浮亏 -¥' + Math.abs(totalPnl).toLocaleString('zh-CN', {maximumFractionDigits: 0}) + '（' + (totalRet*100).toFixed(2) + '%）';
+  var pnlLabel = totalPnl >= 0 ? '总浮盈 +¥' : '总浮亏 -¥';
+  document.getElementById('fundTotalPnl').textContent = pnlLabel + Math.abs(totalPnl).toLocaleString('zh-CN', {maximumFractionDigits: 0}) + '（' + (totalRet*100).toFixed(2) + '%）';
   document.getElementById('fundTotalPnl').style.color = totalRet >= 0 ? 'var(--danger)' : 'var(--success)';
+  var hdrCost = document.getElementById('fundHeaderCost');
+  if (hdrCost) hdrCost.textContent = '¥' + totalCost.toLocaleString('zh-CN', {maximumFractionDigits: 0});
 
   document.getElementById('fundWinCount').textContent = winners.length + '只';
   document.getElementById('fundWinDetail').textContent = winners.length > 0 ? '「'+winners.map(function(f){return f.code;}).join(' / ')+'」' : '无';
@@ -2887,7 +2892,7 @@ function renderFundTracker() {
     var amt = roundMoney(f.cost * ratio);
     if (amt < 500) amt = 500;
     amt = Math.min(amt, MAX_PER_FUND, (remainingBudget||DAILY_CAP));
-    var afterCostNav = (f.cost+amt)/(f.shares+amt/f.nav);
+    var afterCostNav = (f.investedCost+amt)/(f.shares+amt/f.nav);
     var newRetPct = (Math.abs(f.nav-afterCostNav)/afterCostNav*100).toFixed(1);
     return {cls:'buy',action:'buy',amount:amt,actionLabel:'今日补仓',title:(f.ret>=-0.15?'🔴 轻度浮亏 — 小额补仓':f.ret>=-0.30?'🔴🔴 中度浮亏 — 分批补仓':'🔴🔴🔴 深度浮亏 — 谨慎补仓'),body:'浮亏 '+pctStr+'，基金质量 <strong>'+f.scoreTag+'</strong>。今日补仓 <strong>¥'+amt.toLocaleString()+'</strong>（仅占仓位 '+(amt/f.cost*100).toFixed(0)+'%），补仓后成本 ¥'+f.costNav.toFixed(2)+'→<strong>¥'+afterCostNav.toFixed(2)+'</strong>。',tip:'操作：支付宝 → 基金 → 买入 → 输入 ¥'+amt.toLocaleString()};
   }
@@ -2931,7 +2936,7 @@ function renderFundTracker() {
       '</div>'+
       actionBadge +
       '<div class="fund-stats-grid">'+
-        '<div class="fund-stat-row"><span class="kl">成本</span><span class="kv">¥'+f.cost.toLocaleString()+'</span></div>'+
+        '<div class="fund-stat-row"><span class="kl">成本</span><span class="kv">¥'+f.investedCost.toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
         '<div class="fund-stat-row"><span class="kl">市值</span><span class="kv">¥'+f.curValue.toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
         '<div class="fund-stat-row"><span class="kl">净值</span><span class="kv">¥'+f.nav.toFixed(4)+'</span></div>'+
         '<div class="fund-stat-row"><span class="kl">成本净值</span><span class="kv">¥'+f.costNav.toFixed(4)+'</span></div>'+
