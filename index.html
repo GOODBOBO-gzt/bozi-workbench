@@ -2796,12 +2796,10 @@ window.addEventListener('resize', function() {
 });
 
 // ==================== 基金追踪模块 ====================
-var fundRendered = false;
+var fundBaseData = null;
+var fundEstimateStatus = 'idle';
 
-function renderFundTracker() {
-  if (fundRendered) return; // 只渲染一次（数据基于固定持仓）
-  fundRendered = true;
-
+function initFundBaseData() {
   var funds = [
     {code:"001438",name:"易方达瑞享混合E",cost:11051,ret:-0.1763,nav:7.7467,mgr:"武阳",mgrAnn:25.63,risk:"中高风险",type:"混合-灵活",yr1:0.9693,yr1txt:"+96.9%",ytd:0.4015,ytdtxt:"+40.2%",m1:-0.3621,m1txt:"-36.2%",vol:0.5556,maxdd:-0.4026,stock:0.944,topInd:"制造业83%",canBuy:true,score:5,scoreTag:"优质"},
     {code:"001753",name:"红土创新新兴产业混合A",cost:4009,ret:-0.3317,nav:3.738,mgr:"廖星昊",mgrAnn:28.46,risk:"中高风险",type:"混合-灵活",yr1:1.2001,yr1txt:"+120.0%",ytd:0.3667,ytdtxt:"+36.7%",m1:-0.3907,m1txt:"-39.1%",vol:0.45,maxdd:-0.35,stock:0.916,topInd:"制造业82%",canBuy:true,score:6,scoreTag:"优质"},
@@ -2812,17 +2810,82 @@ function renderFundTracker() {
     {code:"000294",name:"华安生态优先混合A",cost:30733,ret:-0.3613,nav:2.767,mgr:"陈媛",mgrAnn:5.77,risk:"中高风险",type:"混合-偏股",yr1:0.0618,yr1txt:"+6.2%",ytd:-0.0047,ytdtxt:"-0.5%",m1:-0.3329,m1txt:"-33.3%",vol:0.357,maxdd:-0.347,stock:0.893,topInd:"制造业83%",canBuy:true,score:1,scoreTag:"观望"},
     {code:"162605",name:"景顺长城鼎益混合(LOF)A",cost:19515,ret:-0.4351,nav:1.502,mgr:"刘彦春",mgrAnn:6.75,risk:"中高风险",type:"混合-偏股",yr1:-0.1702,yr1txt:"-17.0%",ytd:-0.1571,ytdtxt:"-15.7%",m1:-0.2765,m1txt:"-27.6%",vol:0.276,maxdd:-0.297,stock:0.918,topInd:"制造业83%",canBuy:true,score:0,scoreTag:"观望"}
   ];
-
-  // 计算衍生值
-  // 注意：f.cost 存储的是当前现金余额（持仓金额），不是投入成本
   funds.forEach(function(f) {
     f.costNav = f.nav / (1 + f.ret);
-    f.investedCost = f.cost / (1 + f.ret);  // 真实投入成本 = 现金余额 / (1 + 收益率)
-    f.shares = Math.round(f.cost / f.nav);   // 持有份额 = 现金余额 / 当前净值
-    f.curValue = f.cost;                      // 当前市值 = 现金余额
-    f.pnl = f.curValue - f.investedCost;      // 持仓盈亏 = 当前市值 - 投入成本
-    f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
+    f.investedCost = f.cost / (1 + f.ret);
+    f.shares = Math.round(f.cost / f.nav);
   });
+  return funds;
+}
+
+function renderFundTracker() {
+  if (!fundBaseData) fundBaseData = initFundBaseData();
+  doRenderFund(null);
+  if (fundEstimateStatus === 'idle') {
+    fundEstimateStatus = 'fetching';
+    fetchFundEstimates(function(estimates) {
+      fundEstimateStatus = 'done';
+      var cnt = 0;
+      for (var k in estimates) cnt++;
+      if (cnt > 0) doRenderFund(estimates);
+    });
+  }
+}
+
+function fetchFundEstimates(callback) {
+  var codes = ["001438","001753","008327","001216","570001","161725","000294","162605"];
+  var results = {};
+  var done = 0;
+  var called = false;
+  function finish() { if (!called) { called = true; callback(results); } }
+  codes.forEach(function(code, idx) {
+    var cbName = 'fundCb_' + idx + '_' + Date.now();
+    window[cbName] = function(data) {
+      if (data && data.fundcode) results[data.fundcode] = data;
+      done++;
+      try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+      if (done >= codes.length) finish();
+    };
+    var script = document.createElement('script');
+    script.src = 'https://fundgz.1234567.com.cn/js/' + code + '.js?rt=' + Date.now() + '&cb=' + cbName;
+    script.onerror = function() {
+      done++;
+      try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+      if (done >= codes.length) finish();
+    };
+    document.body.appendChild(script);
+  });
+  setTimeout(finish, 6000);
+}
+
+function doRenderFund(estimates) {
+  var funds = fundBaseData.map(function(f) { return Object.assign({}, f); });
+  var hasEstimate = false;
+  if (estimates) {
+    funds.forEach(function(f) {
+      var est = estimates[f.code];
+      if (est && est.gsz) {
+        f.nav = parseFloat(est.gsz);
+        f.ret = f.nav / f.costNav - 1;
+        f.curValue = Math.round(f.shares * f.nav);
+        f.pnl = f.curValue - f.investedCost;
+        f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
+        f.estGztime = est.gztime;
+        f.estGszzl = parseFloat(est.gszzl) || 0;
+        hasEstimate = true;
+      } else {
+        f.curValue = f.cost;
+        f.pnl = f.curValue - f.investedCost;
+        f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
+      }
+    });
+  } else {
+    funds.forEach(function(f) {
+      f.curValue = f.cost;
+      f.pnl = f.curValue - f.investedCost;
+      f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
+    });
+  }
 
   // 汇总
   var totalCost = 0, totalValue = 0, winners = [], losers = [];
@@ -2855,7 +2918,13 @@ function renderFundTracker() {
   document.getElementById('fundBestPerfName').textContent = winners.length > 0 ? winners[0].code + ' ' + winners[0].name : '';
 
   // 时间
-  document.getElementById('fundUpdateTime').textContent = '更新于 08-03 14:45（净值日期 07-31）';
+  if (hasEstimate) {
+    var gztime = '';
+    funds.forEach(function(f) { if (f.estGztime) gztime = f.estGztime; });
+    document.getElementById('fundUpdateTime').innerHTML = '<span style="color:var(--danger)">⚡ 实时估值 ' + gztime + '</span>（基于 07-31 收盘净值估算）';
+  } else {
+    document.getElementById('fundUpdateTime').textContent = '更新于 08-03 14:45（净值日期 07-31）';
+  }
 
   // ===== 保守策略 =====
   var DAILY_CAP = 5000, MAX_PER_FUND = 2000;
@@ -3015,7 +3084,9 @@ function renderFundTracker() {
       banner.className = 'fund-trade-banner visible';
       banner.style.background = 'var(--warning-soft)';
       banner.style.color = '#8b5a2b';
-      banner.innerHTML = '⚡ <strong>净值尚未确定</strong>，建议 14:30-14:55 操作。当前建议基于上次收盘数据。';
+      banner.innerHTML = hasEstimate ?
+        '⚡ <strong>已获取实时估值</strong>，当前建议基于今日实时估算净值。3点前操作按今日净值成交。' :
+        '⚡ <strong>净值尚未确定</strong>，建议 14:30-14:55 操作。当前建议基于上次收盘数据。';
     } else {
       tsEl.innerHTML = '<span style="color:var(--text-muted)">🌙 非交易时段</span>';
       tsEl.style.background = 'var(--input-bg)';
