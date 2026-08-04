@@ -1620,38 +1620,79 @@ document.getElementById('syncToggle').addEventListener('click', function() {
 });
 
 function connectCloud() {
-  var appId = document.getElementById('syncAppId').value.trim();
+  var appId = document.getElementById('syncAppId').value.trim().replace(/\/+$/, '');
   var appKey = document.getElementById('syncAppKey').value.trim();
   if (!appId || !appKey) { toast('请输入 Project URL 和 Service Role Key', 'error'); return; }
+  if (!/^https:\/\/[^/]+\.supabase\.co$/i.test(appId)) {
+    toast('Project URL 格式不正确，应类似 https://xxxxx.supabase.co', 'error');
+    return;
+  }
   SUPABASE_URL = appId; SUPABASE_KEY = appKey;
   wbSet('sb_url', appId); wbSet('sb_key', appKey);
   isConnected = false;
   updateSyncDotClass('yellow');
+  toast('正在测试云端连接...', 'info');
 
-  // 先推送本地数据到云端（保证当前设备改动不丢失），再拉取云端确认同步
-  pushToCloud(function(ok, errMsg) {
-    if (ok) {
-      wbSet('sb_lastSync', Date.now());
-      pullFromCloud(function(ok2, action) {
-        if (ok2) {
-          isConnected = true;
-          updateSyncDotClass('green');
-          closeModal();
-          startSyncPolling();
-          toast('云端已连接！数据自动同步中', 'success');
-        } else {
-          isConnected = true;
-          updateSyncDotClass('green');
-          closeModal();
-          startSyncPolling();
-          toast('云端已连接（校验同步待网络恢复）', 'success');
+  // 先用只读请求验证浏览器能访问 Supabase，再执行同步，避免 POST 失败时只显示笼统错误。
+  var testUrl = SUPABASE_URL + '/rest/v1/sync_data?select=id&limit=1';
+  fetch(testUrl, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+  }).then(function(r) {
+    if (!r.ok) {
+      return r.text().then(function(body) {
+        var detail = body;
+        try { var parsed = JSON.parse(body); detail = parsed.message || parsed.hint || parsed.error || body; } catch (_) {}
+        throw new Error('HTTP ' + r.status + ': ' + detail);
+      });
+    }
+    return r.json();
+  }).then(function() {
+    // 连接验证成功后：本地有数据先上传保留当前设备改动；本地为空则直接强制拉取云端。
+    var hasLocalData = todos.length > 0 || orders.length > 0 || schedules.length > 0;
+    var finish = function() {
+      isConnected = true;
+      updateSyncDotClass('green');
+      closeModal();
+      startSyncPolling();
+      toast('云端已连接！数据自动同步中', 'success');
+    };
+    if (hasLocalData) {
+      pushToCloud(function(ok, errMsg) {
+        if (!ok) {
+          isConnected = false;
+          updateSyncDotClass('red');
+          toast('连接失败：' + (errMsg || '本地数据上传失败') + '\n\n请确认建表 SQL 和 service_role key。', 'error');
+          return;
         }
+        pullFromCloud(function(ok2, action) {
+          if (ok2) finish();
+          else {
+            isConnected = false;
+            updateSyncDotClass('red');
+            toast('连接失败：' + (action || '同步读取失败'), 'error');
+          }
+        }, true);
       });
     } else {
-      updateSyncDotClass('red');
-      var tips = '请检查：\n1. Project URL 是否正确\n2. Key 是否为 service_role（非 anon）\n3. 是否已执行建表 SQL\n4. Supabase 项目是否被暂停（登录 supabase.com 查看）';
-      toast('连接失败：' + (errMsg || '未知错误') + '\n\n' + tips, 'error');
+      pullFromCloud(function(ok, action) {
+        if (ok) finish();
+        else {
+          isConnected = false;
+          updateSyncDotClass('red');
+          toast('连接失败：' + (action || '云端读取失败'), 'error');
+        }
+      }, true);
     }
+  }).catch(function(e) {
+    isConnected = false;
+    updateSyncDotClass('red');
+    var msg = e && e.message ? e.message : String(e);
+    if (msg === 'Failed to fetch') {
+      msg = '浏览器无法访问 Supabase。请检查网络/VPN、浏览器拦截或 Supabase 项目状态';
+    }
+    toast('连接失败：' + msg + '\n\n请确认 Project URL、service_role key 和建表 SQL。', 'error');
   });
 }
 
