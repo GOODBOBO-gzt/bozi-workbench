@@ -1478,6 +1478,12 @@ function autoSyncToCloud() {
 
 function pushToCloud(callback) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  // 防护：如果本地数据全为空，不推送到云端（防止覆盖云端有效数据）
+  if (todos.length === 0 && orders.length === 0 && schedules.length === 0) {
+    console.log('[sync] 本地数据为空，跳过推送以防覆盖云端数据');
+    if (callback) callback(false, '本地数据为空，已跳过推送');
+    return;
+  }
   updateSyncDotClass('yellow');
   var data = { id: 1, todos: todos, orders: orders, schedules: schedules, updated_at: Date.now() };
   var url = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/sync_data';
@@ -1540,7 +1546,9 @@ function pullFromCloud(callback) {
         var cloud = res[0];
         var cloudUpdated = cloud.updated_at || 0;
         var localUpdated = wbGet('sb_lastSync', 0);
-        if (cloudUpdated > localUpdated) {
+        var hasLocalData = todos.length > 0 || orders.length > 0 || schedules.length > 0;
+        // 本地数据为空时强制拉取（不管时间戳），或者云端确实更新才拉取
+        if (!hasLocalData || cloudUpdated > localUpdated) {
           todos = cloud.todos || []; orders = cloud.orders || []; schedules = cloud.schedules || [];
           wbSet('todos', todos); wbSet('orders', orders); wbSet('schedules', schedules);
           wbSet('sb_lastSync', cloudUpdated);
@@ -1551,7 +1559,7 @@ function pullFromCloud(callback) {
         }
         isConnected = true;
         updateSyncDotClass('green');
-        if (callback) callback(true, cloudUpdated > localUpdated ? 'pulled' : 'pushed');
+        if (callback) callback(true, (!hasLocalData || cloudUpdated > localUpdated) ? 'pulled' : 'pushed');
       } else {
         // 无数据，首次上传
         pushToCloud(function(ok) {
@@ -1591,6 +1599,7 @@ document.getElementById('syncToggle').addEventListener('click', function() {
         '<button class="btn btn-primary" onclick="connectCloud()"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>连接云端</button>'+
         '<button class="btn btn-ghost" onclick="copySupabaseSQL()" style="margin-top:8px"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>复制建表 SQL</button>'+
         '<button class="btn btn-ghost" onclick="copyRecoveryLink()" style="margin-top:8px"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>生成恢复链接</button>'+
+        '<button class="btn btn-ghost" onclick="forceRestoreFromCloud()" style="margin-top:8px;border-color:var(--danger);color:var(--danger)"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>从云端强制恢复数据</button>'+
         '<p class="sync-hint">设置步骤：<a href="https://supabase.com/dashboard/sign-in" target="_blank">注册 Supabase</a> → 创建项目 → SQL Editor 执行建表语句 → Settings/API 获取 Project URL 和 service_role key。<br>建表 SQL 已复制到剪贴板，在 Supabase SQL Editor 中粘贴执行即可。</p>'+
       '</div>'+
       '<div class="sync-divider">手动备份</div>'+
@@ -1645,6 +1654,23 @@ function copySupabaseSQL() {
     toast('建表 SQL 已复制到剪贴板！请在 Supabase SQL Editor 中粘贴执行', 'success');
   }, function() {
     toast('复制失败，请手动复制：' + sql, 'error');
+  });
+}
+
+function forceRestoreFromCloud() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) { toast('未配置云端同步', 'error'); return; }
+  toast('正在从云端恢复...', 'info');
+  // 重置 sb_lastSync 为 0，强制拉取
+  wbSet('sb_lastSync', 0);
+  pullFromCloud(function(ok, action) {
+    if (ok && action === 'pulled') {
+      closeModal();
+      toast('数据已从云端恢复！', 'success');
+    } else if (ok && action === 'pushed') {
+      toast('云端数据不比本地新，已跳过', 'info');
+    } else {
+      toast('恢复失败：' + action, 'error');
+    }
   });
 }
 
@@ -2692,6 +2718,8 @@ var syncPollingInterval = null;
 function startSyncPolling() {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
   stopSyncPolling();
+  // 启动时立即拉取一次，不等待第一个30秒周期
+  pullFromCloudSilently();
   syncPollingInterval = setInterval(function() {
     pullFromCloudSilently();
   }, 30000);
@@ -2703,6 +2731,7 @@ function stopSyncPolling() {
 
 function pullFromCloudSilently() {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  var hasLocalData = todos.length > 0 || orders.length > 0 || schedules.length > 0;
   var url = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/sync_data?id=eq.1&select=updated_at';
   fetch(url, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
     .then(function(r) {
@@ -2713,7 +2742,8 @@ function pullFromCloudSilently() {
       if (res && Array.isArray(res) && res.length > 0) {
         var cloudUpdated = res[0].updated_at || 0;
         var localUpdated = wbGet('sb_lastSync', 0);
-        if (cloudUpdated > localUpdated) {
+        // 本地数据为空时强制拉取，或者云端有更新才拉取
+        if (!hasLocalData || cloudUpdated > localUpdated) {
           pullFromCloud(function(ok, action) {
             if (ok && action === 'pulled') {
               updateSyncDotClass('green');
@@ -2745,7 +2775,13 @@ function checkCloudConnectivity() {
       if (r.ok) {
         isConnected = true;
         updateSyncDotClass('green');
-        // 同步成功后启动定期轮询
+        // 检测到连通后立即拉取一次云端数据（防止新域名/新设备数据为空）
+        pullFromCloud(function(ok, action) {
+          if (ok && action === 'pulled') {
+            toast('已从云端同步最新数据', 'info');
+          }
+        });
+        // 启动定期轮询
         startSyncPolling();
       } else {
         updateSyncDotClass('yellow');
