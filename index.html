@@ -1568,11 +1568,10 @@ function pullFromCloud(callback, force) {
         updateSyncDotClass('green');
         if (callback) callback(true, shouldPull ? 'pulled' : 'pushed');
       } else {
-        // 无数据，首次上传
-        pushToCloud(function(ok) {
-          if (ok) { isConnected = true; updateSyncDotClass('green'); if (callback) callback(true, 'pushed'); }
-          else { if (callback) callback(false, '首次上传失败'); }
-        });
+        // 无数据时不自动上传当前页面内容，避免示例数据或空数据覆盖云端。
+        isConnected = true;
+        updateSyncDotClass('green');
+        if (callback) callback(true, 'empty');
       }
     })
     .catch(function(e) {
@@ -1649,42 +1648,29 @@ function connectCloud() {
     }
     return r.json();
   }).then(function() {
-    // 连接验证成功后：本地有数据先上传保留当前设备改动；本地为空则直接强制拉取云端。
-    var hasLocalData = todos.length > 0 || orders.length > 0 || schedules.length > 0;
+    // 首次连接必须以云端为准，防止当前设备的示例数据覆盖云端真实数据。
     var finish = function() {
       isConnected = true;
       updateSyncDotClass('green');
       closeModal();
       startSyncPolling();
-      toast('云端已连接！数据自动同步中', 'success');
+      toast('云端已连接！已优先恢复云端数据，之后自动同步', 'success');
     };
-    if (hasLocalData) {
-      pushToCloud(function(ok, errMsg) {
-        if (!ok) {
-          isConnected = false;
-          updateSyncDotClass('red');
-          toast('连接失败：' + (errMsg || '本地数据上传失败') + '\n\n请确认建表 SQL 和 service_role key。', 'error');
-          return;
-        }
-        pullFromCloud(function(ok2, action) {
-          if (ok2) finish();
-          else {
-            isConnected = false;
-            updateSyncDotClass('red');
-            toast('连接失败：' + (action || '同步读取失败'), 'error');
-          }
-        }, true);
-      });
-    } else {
-      pullFromCloud(function(ok, action) {
-        if (ok) finish();
-        else {
-          isConnected = false;
-          updateSyncDotClass('red');
-          toast('连接失败：' + (action || '云端读取失败'), 'error');
-        }
-      }, true);
-    }
+    pullFromCloud(function(ok, action) {
+      if (ok && action === 'pulled') {
+        finish();
+      } else if (ok && action === 'empty') {
+        isConnected = true;
+        updateSyncDotClass('green');
+        closeModal();
+        startSyncPolling();
+        toast('云端已连接，但当前没有保存的数据', 'info');
+      } else {
+        isConnected = false;
+        updateSyncDotClass('red');
+        toast('连接失败：' + (action || '云端读取失败'), 'error');
+      }
+    }, true);
   }).catch(function(e) {
     isConnected = false;
     updateSyncDotClass('red');
@@ -2718,33 +2704,23 @@ function bootstrap() {
     }
   }
 
-  // 本地无数据但已配置云端同步 → 自动从云端恢复
-  var hasLocalData = todos.length > 0 || orders.length > 0 || schedules.length > 0;
-  if (!hasLocalData && SUPABASE_URL && SUPABASE_KEY) {
+  // 已配置云端时，无论本地是否有数据，都先从云端恢复；禁止示例数据覆盖真实数据。
+  if (SUPABASE_URL && SUPABASE_KEY) {
     pullFromCloud(function(ok, action) {
-      if (ok) {
-        initSampleData(); // 云端也无数据时填入示例
-        renderTodos(); renderOrders(); renderSchedule();
-        toast('数据已从云端恢复', 'success');
-      } else {
+      if (ok && action === 'pulled') {
+        toast('已从云端恢复最新数据', 'success');
+      } else if (ok && action === 'empty') {
         initSampleData();
         renderTodos(); renderOrders(); renderSchedule();
-        toast('云端连接失败，已加载示例数据', 'error');
+        toast('云端暂无数据，已加载示例数据', 'info');
+      } else if (!ok) {
+        renderTodos(); renderOrders(); renderSchedule();
+        toast('云端连接失败，已保留本地数据', 'error');
       }
-    });
+    }, true);
   } else {
     initSampleData();
-    renderTodos();
-    renderOrders();
-    renderSchedule();
-    // 如果已配置云端同步，强制拉取一次（确保本地数据与云端一致）
-    if (SUPABASE_URL && SUPABASE_KEY) {
-      pullFromCloud(function(ok, action) {
-        if (ok && action === 'pulled') {
-          toast('已从云端同步最新数据', 'info');
-        }
-      }, true);  // force=true: 页面加载时强制拉取，防止本地数据过期
-    }
+    renderTodos(); renderOrders(); renderSchedule();
   }
 
   // 首次加载提示：本地无数据且未配置云端
