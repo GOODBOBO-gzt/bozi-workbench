@@ -1452,7 +1452,13 @@ document.getElementById('sidebarOverlay').addEventListener('click', function() {
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
 
 // ==================== 数据同步 ====================
-var SUPABASE_URL = wbGet('sb_url', '') || 'https://wtyaynqpdssahksuouik.supabase.co';
+var SUPABASE_DEFAULT_URL = 'https://wtyaynqpdssahksuovik.supabase.co';
+var SUPABASE_URL = wbGet('sb_url', '') || SUPABASE_DEFAULT_URL;
+// 旧版本曾保存过一个拼写错误的 Project URL，自动迁移到正确地址。
+if (SUPABASE_URL === 'https://wtyaynqpdssuouik.supabase.co') {
+  SUPABASE_URL = SUPABASE_DEFAULT_URL;
+  wbSet('sb_url', SUPABASE_URL);
+}
 var SUPABASE_KEY = wbGet('sb_key', '') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0eWF5bnFwZHNzYWhrc3VvdmlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTI2Mzc4NiwiZXhwIjoyMTAwODM5Nzg2fQ.KVczhtGJ8lIj7_YsqoSW3I85TgUcre5mwBXtsLeIvZ4';
 var syncTimer = null;
 var isConnected = false;
