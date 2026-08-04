@@ -1528,7 +1528,7 @@ function pushToCloud(callback) {
     });
 }
 
-function pullFromCloud(callback) {
+function pullFromCloud(callback, force) {
   if (!SUPABASE_URL || !SUPABASE_KEY) { if (callback) callback(false, '未连接'); return; }
   updateSyncDotClass('yellow');
   var url = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/sync_data?id=eq.1&select=*';
@@ -1547,8 +1547,9 @@ function pullFromCloud(callback) {
         var cloudUpdated = cloud.updated_at || 0;
         var localUpdated = wbGet('sb_lastSync', 0);
         var hasLocalData = todos.length > 0 || orders.length > 0 || schedules.length > 0;
-        // 本地数据为空时强制拉取（不管时间戳），或者云端确实更新才拉取
-        if (!hasLocalData || cloudUpdated > localUpdated) {
+        // force=true 时强制拉取；否则本地为空或云端更新才拉取
+        var shouldPull = force || !hasLocalData || cloudUpdated > localUpdated;
+        if (shouldPull) {
           todos = cloud.todos || []; orders = cloud.orders || []; schedules = cloud.schedules || [];
           wbSet('todos', todos); wbSet('orders', orders); wbSet('schedules', schedules);
           wbSet('sb_lastSync', cloudUpdated);
@@ -1559,7 +1560,7 @@ function pullFromCloud(callback) {
         }
         isConnected = true;
         updateSyncDotClass('green');
-        if (callback) callback(true, (!hasLocalData || cloudUpdated > localUpdated) ? 'pulled' : 'pushed');
+        if (callback) callback(true, shouldPull ? 'pulled' : 'pushed');
       } else {
         // 无数据，首次上传
         pushToCloud(function(ok) {
@@ -1660,8 +1661,6 @@ function copySupabaseSQL() {
 function forceRestoreFromCloud() {
   if (!SUPABASE_URL || !SUPABASE_KEY) { toast('未配置云端同步', 'error'); return; }
   toast('正在从云端恢复...', 'info');
-  // 重置 sb_lastSync 为 0，强制拉取
-  wbSet('sb_lastSync', 0);
   pullFromCloud(function(ok, action) {
     if (ok && action === 'pulled') {
       closeModal();
@@ -1671,7 +1670,7 @@ function forceRestoreFromCloud() {
     } else {
       toast('恢复失败：' + action, 'error');
     }
-  });
+  }, true);  // force=true
 }
 
 function copyRecoveryLink() {
@@ -2691,13 +2690,13 @@ function bootstrap() {
     renderTodos();
     renderOrders();
     renderSchedule();
-    // 如果已配置云端同步，后台静默拉取
+    // 如果已配置云端同步，强制拉取一次（确保本地数据与云端一致）
     if (SUPABASE_URL && SUPABASE_KEY) {
       pullFromCloud(function(ok, action) {
         if (ok && action === 'pulled') {
           toast('已从云端同步最新数据', 'info');
         }
-      });
+      }, true);  // force=true: 页面加载时强制拉取，防止本地数据过期
     }
   }
 
@@ -2775,12 +2774,12 @@ function checkCloudConnectivity() {
       if (r.ok) {
         isConnected = true;
         updateSyncDotClass('green');
-        // 检测到连通后立即拉取一次云端数据（防止新域名/新设备数据为空）
+        // 检测到连通后立即强制拉取一次云端数据（防止新域名/新设备数据为空或过期）
         pullFromCloud(function(ok, action) {
           if (ok && action === 'pulled') {
             toast('已从云端同步最新数据', 'info');
           }
-        });
+        }, true);  // force=true
         // 启动定期轮询
         startSyncPolling();
       } else {
