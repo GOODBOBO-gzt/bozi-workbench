@@ -918,6 +918,35 @@ body::before {
   .first-load-banner .flb-content { font-size: 11px; gap: 8px; }
   .order-card-item .card-value { font-size: 15px; }
 
+  /* ---- 移动端商单表格：所有字段在一屏内横向完整展示 ---- */
+  .order-table { table-layout: fixed; }
+  .order-table thead th {
+    padding: 8px 2px; font-size: 10px; letter-spacing: 0; text-transform: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .order-table tbody td {
+    padding: 7px 2px; font-size: 10px; line-height: 1.3;
+    white-space: normal; word-break: break-word;
+  }
+  .order-table th:nth-child(1), .order-table td:nth-child(1) { width: 11%; white-space: nowrap; }
+  .order-table th:nth-child(2), .order-table td:nth-child(2) { width: 13%; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 0 !important; }
+  .order-table th:nth-child(3), .order-table td:nth-child(3) { width: 6%; white-space: nowrap; }
+  .order-table th:nth-child(4), .order-table td:nth-child(4) { width: 10%; }
+  .order-table th:nth-child(5), .order-table td:nth-child(5) { width: 9%; }
+  .order-table th:nth-child(6), .order-table td:nth-child(6) { width: 9%; }
+  .order-table th:nth-child(7), .order-table td:nth-child(7) { width: 7%; }
+  .order-table th:nth-child(8), .order-table td:nth-child(8) { width: 5% !important; max-width: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+  .order-table th:nth-child(9), .order-table td:nth-child(9) { width: 7%; }
+  .order-table th:nth-child(10), .order-table td:nth-child(10) { width: 23%; }
+  .order-table .account-badge { font-size: 9px; padding: 1px 4px; border-radius: 6px; }
+  .order-table .order-status { font-size: 0; gap: 0; }
+  .order-table .order-status .dot { width: 10px; height: 10px; }
+  .order-table .order-actions { gap: 3px; }
+  .order-table .btn-icon { width: 22px; height: 22px; padding: 3px; }
+  .order-table .btn-icon svg { width: 14px; height: 14px; }
+  .order-table .refund-cell { padding: 2px 3px; gap: 2px; font-size: 10px; }
+  .order-table .refund-check { width: 14px; height: 14px; }
+
   /* ---- 月历 ---- */
   .order-calendar-wrap {
     padding: 10px 6px; border-radius: 16px;
@@ -1210,7 +1239,7 @@ body::before {
         </div>
         <div class="order-table-wrap" id="orderTableWrap">
           <table class="order-table">
-            <thead><tr><th>日期</th><th>合作产品</th><th>账号</th><th>报价(¥)</th><th>成本(¥)</th><th>返款(¥)</th><th>置换(¥)</th><th>备注</th><th>状态</th><th>操作</th></tr></thead>
+            <thead><tr><th title="发布日期">日期</th><th title="合作产品">产品</th><th title="发布账号">账号</th><th title="合作报价">报价</th><th title="运营成本">成本</th><th title="返款金额">返款</th><th title="置换价值">置换</th><th title="备注信息">备注</th><th title="发布状态">状态</th><th title="操作">操作</th></tr></thead>
             <tbody id="orderTableBody"></tbody>
           </table>
         </div>
@@ -2424,14 +2453,14 @@ function renderOrders() {
   } else {
     tbody.innerHTML = sorted.map(function(o) {
       return '<tr><td style="white-space:nowrap">'+formatDate(o.date)+'</td>'+
-        '<td style="font-weight:500">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'</td>'+
+        '<td style="font-weight:500" title="'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'</td>'+
         '<td><span class="account-badge '+(o.account||'main')+'">'+(o.account==='sub'?'小号':'大号')+'</span></td>'+
         '<td style="font-weight:600;color:var(--success)">¥'+o.price.toLocaleString()+'</td>'+
         '<td style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</td>'+
         '<td>'+(o.refund>0 ? '<span class="refund-cell '+(o.refundDone?'done':'pending')+'" onclick="toggleRefundStatus(\''+o.id+'\')" title="点击切换返款状态"><span class="refund-amount">¥'+o.refund.toLocaleString()+'</span><span class="refund-check '+(o.refundDone?'checked':'')+'">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span></span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
         '<td>'+(o.barter>0 ? '<span style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
         '<td style="font-size:13px;color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHtml(o.note||'')+'">'+ (o.note ? escapeHtml(o.note) : '<span style="opacity:0.4">-</span>') +'</td>'+
-        '<td><span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></td>'+
+        '<td><span class="order-status '+(o.done?'done':'pending')+'" title="'+(o.done?'已完成':'待发布')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></td>'+
         '<td><div class="order-actions">'+
           '<button class="btn btn-icon btn-ghost btn-sm" onclick="toggleOrderStatus(\''+o.id+'\')" title="'+(o.done?'标记待发布':'标记完成')+'">'+(o.done?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 0118 0M3 12a9 9 0 1018 0"/></svg>':'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>')+'</button>'+
           '<button type="button" class="btn btn-icon btn-ghost btn-sm" data-order-id="'+escapeHtml(String(o.id))+'" onclick="openOrderModalFromButton(this)" title="编辑"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>'+
