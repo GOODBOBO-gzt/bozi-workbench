@@ -2969,6 +2969,10 @@ function todayStr(d) {
   return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
 }
 
+// 当前基金数据的展示模式：'intraday' = 盘中实时估值，'nav' = 收盘确认净值
+var gFundLiveMode = 'nav';
+var gFundLiveIntradayDate = '';
+
 
 
 // 打开基金页时每 15 分钟静默刷新一次，赶上每日自动更新后的最新净值
@@ -2993,9 +2997,14 @@ function fetchFundLive(callback) {
 
 // 将 fund-live.json 映射为 doRenderFund 兼容的估值结构（code -> {gsz, gszzl, gztime}）
 function applyFundLive(live) {
+  gFundLiveMode = (live && live.mode) ? live.mode : 'nav';
+  gFundLiveIntradayDate = live ? (live.intradayDate || '') : '';
   var est = {};
   (live.funds || []).forEach(function(f) {
-    est[f.code] = { fundcode: f.code, gsz: f.nav, gszzl: f.dayChg, gztime: f.navDate };
+    var price = (typeof f.price === 'number') ? f.price : f.nav;
+    var chg = (f.mode === 'intraday') ? (f.gszzl != null ? f.gszzl : f.dayChg) : f.dayChg;
+    var gz = (f.mode === 'intraday') ? f.gztime : f.navDate;
+    est[f.code] = { fundcode: f.code, gsz: price, gszzl: chg, gztime: gz, mode: f.mode };
   });
   doRenderFund(est);
   updateFundLiveBadge(live);
@@ -3004,7 +3013,11 @@ function applyFundLive(live) {
 function updateFundLiveBadge(live) {
   var el = document.getElementById('fundAutoTrack');
   if (!el) return;
-  if (live && live.navDate) {
+  if (!live) {
+    el.innerHTML = ' · <span style="color:var(--text-muted)">📅 每日自动更新</span>';
+  } else if (live.mode === 'intraday') {
+    el.innerHTML = ' · <span style="color:var(--danger)">⚡ 盘中实时估值 ' + (live.intradayDate || '') + ' ' + (live.intradayAsOf || '') + '</span>';
+  } else if (live.navDate) {
     el.innerHTML = ' · <span style="color:var(--success)">✅ 已自动更新（净值 ' + live.navDate + '）</span>';
   } else {
     el.innerHTML = ' · <span style="color:var(--text-muted)">📅 每日收盘后自动更新</span>';
@@ -3074,7 +3087,11 @@ function doRenderFund(estimates) {
   if (hasEstimate) {
     var gztime = '';
     funds.forEach(function(f) { if (f.estGztime) gztime = f.estGztime; });
-    document.getElementById('fundUpdateTime').innerHTML = '<span style="color:var(--danger)">⚡ 最新净值 ' + gztime + '</span>';
+    if (gFundLiveMode === 'intraday') {
+      document.getElementById('fundUpdateTime').innerHTML = '<span style="color:var(--danger)">⚡ 盘中实时估值 ' + gztime + '</span>';
+    } else {
+      document.getElementById('fundUpdateTime').innerHTML = '<span style="color:var(--success)">✅ 最新净值 ' + gztime + '</span>';
+    }
   } else {
     var cacheDate0 = todayStr();
     document.getElementById('fundUpdateTime').textContent = '更新于 ' + cacheDate0 + '（基于最近净值估算）';
@@ -3161,12 +3178,12 @@ function doRenderFund(estimates) {
       '<div class="fund-stats-grid">'+
         '<div class="fund-stat-row"><span class="kl">成本</span><span class="kv">¥'+f.investedCost.toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
         '<div class="fund-stat-row"><span class="kl">市值</span><span class="kv">¥'+f.curValue.toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
-        '<div class="fund-stat-row"><span class="kl">净值</span><span class="kv">¥'+f.nav.toFixed(4)+'</span></div>'+
+        '<div class="fund-stat-row"><span class="kl">净值</span><span class="kv">¥'+f.nav.toFixed(4)+(gFundLiveMode==='intraday'?' (估)':'')+'</span></div>'+
         '<div class="fund-stat-row"><span class="kl">成本净值</span><span class="kv">¥'+f.costNav.toFixed(4)+'</span></div>'+
         '<div class="fund-stat-row"><span class="kl">持仓盈亏</span><span class="kv" style="color:'+(f.pnl>=0?'var(--danger)':'var(--success)')+'">'+(f.pnl>=0?'+':'')+'¥'+Math.abs(f.pnl).toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
         '<div class="fund-stat-row"><span class="kl">距回本需涨</span><span class="kv" style="color:var(--danger)">'+(f.ret>=0?'已盈利':'+'+((f.needGain)*100).toFixed(2)+'%')+'</span></div>'+
       '</div>'+
-      '<div class="fund-bar-wrap"><div class="fund-bar-labels"><span>净值 ¥'+f.nav.toFixed(2)+'</span><span>成本 ¥'+f.costNav.toFixed(2)+'</span></div><div class="fund-bar-track"><div class="fund-bar-fill" style="width:'+barPct+'%;background:'+barColor+'"></div></div></div>'+
+      '<div class="fund-bar-wrap"><div class="fund-bar-labels"><span>净值 ¥'+f.nav.toFixed(2)+(gFundLiveMode==='intraday'?' (估)':'')+'</span><span>成本 ¥'+f.costNav.toFixed(2)+'</span></div><div class="fund-bar-track"><div class="fund-bar-fill" style="width:'+barPct+'%;background:'+barColor+'"></div></div></div>'+
       '<div class="fund-meta-grid">'+
         '<div class="fund-meta-row"><span class="kl">近1月</span><span class="kv" style="color:'+(f.m1>=0?'var(--danger)':'var(--success)')+'">'+f.m1txt+'</span></div>'+
         '<div class="fund-meta-row"><span class="kl">近1年</span><span class="kv" style="color:'+(f.yr1>=0?'var(--danger)':'var(--success)')+'">'+f.yr1txt+'</span></div>'+
