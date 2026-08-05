@@ -47,6 +47,14 @@
   --overlay: rgba(74, 56, 41, 0.32);
   --mint-glow: rgba(92, 184, 154, 0.18);
   --pink-glow: rgba(92, 184, 154, 0.18);
+
+  /* 深咖色右侧画布（增强页面层次） */
+  --coffee-deep: #3c2b1d;
+  --coffee-deep-2: #47331f;
+  --coffee-panel: #4a3522;
+  --coffee-text: #f1e8da;
+  --coffee-text-muted: #c9b399;
+  --coffee-border: rgba(255, 240, 220, 0.10);
 }
 
 [data-theme="dark"] {
@@ -66,6 +74,14 @@
   --accent-soft: rgba(111, 202, 169, 0.16);
   --accent-hover: #84d8ba;
   --accent-dark: #2f8f74;
+
+  /* 深咖画布（暗色主题） */
+  --coffee-deep: #271e16;
+  --coffee-deep-2: #322619;
+  --coffee-panel: #3a2c20;
+  --coffee-text: #efe7dd;
+  --coffee-text-muted: #b8a48f;
+  --coffee-border: rgba(255, 240, 220, 0.08);
   --accent-gradient: linear-gradient(135deg, #84d8ba, #5cb89a);
   --accent-gradient-3d: linear-gradient(180deg, #84d8ba 0%, #4f9a7d 45%, #3f9277 100%);
   --card-bg: rgba(40, 31, 24, 0.52);
@@ -221,27 +237,27 @@ body::before {
 .sidebar-overlay.show { display: block; }
 
 /* 主内容区 */
-.main-content { flex: 1; margin-left: 260px; min-height: 100vh; display: flex; flex-direction: column; }
+.main-content { flex: 1; margin-left: 260px; min-height: 100vh; display: flex; flex-direction: column; background: linear-gradient(165deg, var(--coffee-deep), var(--coffee-deep-2)); box-shadow: inset 14px 0 44px rgba(0, 0, 0, 0.20); }
 
 .topbar {
   position: sticky; top: 0; z-index: 50; padding: 16px 32px;
-  background: var(--glass-bg);
+  background: rgba(60, 44, 30, 0.55);
   backdrop-filter: blur(28px) saturate(170%);
   -webkit-backdrop-filter: blur(28px) saturate(170%);
-  border-bottom: 1px solid var(--glass-border-light);
-  box-shadow: 0 2px 20px rgba(150, 120, 95, 0.06);
+  border-bottom: 1px solid var(--coffee-border);
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.22);
   display: flex; align-items: center; gap: 16px;
 }
 
 .menu-toggle { display: none; width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); border: none; cursor: pointer; align-items: center; justify-content: center; color: var(--text-primary); flex-shrink: 0; }
 .menu-toggle svg { width: 22px; height: 22px; }
-.topbar-title h2 { font-size: 20px; font-weight: 600; color: var(--text-primary); }
-.topbar-title p { font-size: 13px; color: var(--text-muted); }
+.topbar-title h2 { font-size: 20px; font-weight: 600; color: var(--coffee-text); }
+.topbar-title p { font-size: 13px; color: var(--coffee-text-muted); }
 .topbar-spacer { flex: 1; }
 .topbar-date { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--accent-soft); border-radius: 12px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .topbar-date svg { width: 16px; height: 16px; }
 
-.page-content { flex: 1; padding: 28px 32px 48px; }
+.page-content { flex: 1; padding: 28px 32px 48px; color: var(--coffee-text); }
 .page { display: none; animation: fadeIn 0.35s ease; }
 .page.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -255,7 +271,7 @@ body::before {
   box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.4);
 }
 
-.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; background: var(--glass-bg); border: 1px solid var(--glass-border-light); border-radius: 14px; padding: 12px 16px; box-shadow: var(--glass-shadow); color: var(--text-primary); }
 .section-title { font-size: 17px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
 .section-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-gradient); }
 
@@ -482,7 +498,8 @@ body::before {
 /* 月份选择器 */
 .dash-month-picker {
   display: flex; align-items: center; justify-content: center; gap: 12px;
-  margin-bottom: 16px; padding: 8px 0;
+  margin-bottom: 16px; padding: 8px 14px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border-light); border-radius: 14px; box-shadow: var(--glass-shadow);
 }
 .dash-month-picker button {
   width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--glass-border);
@@ -650,7 +667,7 @@ body::before {
 .mbn-tab.active .mbn-glow { opacity: 1; width: 36px; }
 
 /* ========== 每周行程安排 ========== */
-.schedule-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.schedule-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; background: var(--glass-bg); border: 1px solid var(--glass-border-light); border-radius: 14px; padding: 10px 16px; box-shadow: var(--glass-shadow); }
 .schedule-week-nav { display: flex; align-items: center; gap: 8px; }
 .schedule-week-title { font-size: 17px; font-weight: 700; color: var(--text-primary); white-space: nowrap; min-width: 150px; text-align: center; }
 .schedule-week-range { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
@@ -746,11 +763,11 @@ body::before {
   /* ---- 顶部栏毛玻璃升级 ---- */
   .topbar {
     padding: 12px 16px;
-    background: rgba(255, 248, 250, 0.6);
+    background: rgba(60, 44, 30, 0.62);
     backdrop-filter: blur(32px) saturate(180%);
     -webkit-backdrop-filter: blur(32px) saturate(180%);
-    border-bottom: 1px solid var(--glass-border-light);
-    box-shadow: 0 2px 24px rgba(150, 120, 95, 0.08), inset 0 1px 0 rgba(255,255,255,0.25);
+    border-bottom: 1px solid var(--coffee-border);
+    box-shadow: 0 2px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.10);
   }
   .topbar-title h2 { font-size: 17px; font-weight: 700; }
   .topbar-title p { font-size: 11px; }
@@ -1136,6 +1153,13 @@ body::before {
 input[type="text"], input[type="number"], input[type="date"], input[type="search"], input[type="email"], input[type="tel"], input:not([type]), input[type=""], textarea, select {
   border-radius: 10px;
 }
+/* ===== 深咖画布：浅色面板保持深字（可读性兜底） ===== */
+.glass-card, .chart-card, .content-card, .fund-card-item, .order-card-item,
+.kpi-card, .modal, .toast,
+.weekly-calendar, .order-calendar-wrap, .order-table, .schedule-toolbar, .dash-month-picker, .section-header {
+  color: var(--text-primary);
+}
+
 </style>
 </head>
 <body>
