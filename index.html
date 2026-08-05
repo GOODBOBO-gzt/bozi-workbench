@@ -366,6 +366,8 @@ body::before {
 .filter-chip:hover { color: var(--text-primary); }
 .order-table-wrap { border-radius: 18px; overflow: hidden; border: 1px solid var(--glass-border-light); background: var(--card-bg); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.35); }
 .order-table { width: 100%; border-collapse: collapse; }
+/* 桌面端默认显示完整日期/账号，移动端切换为简化版 */
+.order-table .date-short, .order-table .acc-short { display: none; }
 .order-table th { padding: 14px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--divider); background: var(--accent-soft); }
 .order-table td { padding: 14px 16px; font-size: 14px; color: var(--text-primary); border-bottom: 1px solid var(--divider); }
 .order-table tr:last-child td { border-bottom: none; }
@@ -928,16 +930,22 @@ body::before {
     padding: 7px 2px; font-size: 10px; line-height: 1.3;
     white-space: normal; word-break: break-word;
   }
-  .order-table th:nth-child(1), .order-table td:nth-child(1) { width: 11%; white-space: nowrap; }
-  .order-table th:nth-child(2), .order-table td:nth-child(2) { width: 13%; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 0 !important; }
+  /* 移动端仅保留 8 列：日期/产品/账号/报价/成本/返款/置换/备注；隐藏状态与操作 */
+  .order-table th:nth-child(1), .order-table td:nth-child(1) { width: 9%; white-space: nowrap; }
+  .order-table th:nth-child(2), .order-table td:nth-child(2) { width: 17%; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 0 !important; }
   .order-table th:nth-child(3), .order-table td:nth-child(3) { width: 6%; white-space: nowrap; }
-  .order-table th:nth-child(4), .order-table td:nth-child(4) { width: 10%; }
-  .order-table th:nth-child(5), .order-table td:nth-child(5) { width: 9%; }
-  .order-table th:nth-child(6), .order-table td:nth-child(6) { width: 9%; }
-  .order-table th:nth-child(7), .order-table td:nth-child(7) { width: 7%; }
-  .order-table th:nth-child(8), .order-table td:nth-child(8) { width: 5% !important; max-width: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
-  .order-table th:nth-child(9), .order-table td:nth-child(9) { width: 7%; }
-  .order-table th:nth-child(10), .order-table td:nth-child(10) { width: 23%; }
+  .order-table th:nth-child(4), .order-table td:nth-child(4) { width: 11%; }
+  .order-table th:nth-child(5), .order-table td:nth-child(5) { width: 10%; }
+  .order-table th:nth-child(6), .order-table td:nth-child(6) { width: 12%; }
+  .order-table th:nth-child(7), .order-table td:nth-child(7) { width: 10%; }
+  .order-table th:nth-child(8), .order-table td:nth-child(8) { width: 25% !important; max-width: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+  .order-table th:nth-child(9), .order-table td:nth-child(9),
+  .order-table th:nth-child(10), .order-table td:nth-child(10) { display: none; }
+  /* 移动端日期简化 7.31、账号简化 大/小 */
+  .order-table .date-full { display: none; }
+  .order-table .date-short { display: inline; }
+  .order-table .acc-full { display: none; }
+  .order-table .acc-short { display: inline; }
   .order-table .account-badge { font-size: 9px; padding: 1px 4px; border-radius: 6px; }
   .order-table .order-status { font-size: 0; gap: 0; }
   .order-table .order-status .dot { width: 10px; height: 10px; }
@@ -1445,6 +1453,12 @@ function formatTime(ts) {
   return (d.getMonth()+1) + '/' + d.getDate();
 }
 function formatDate(ds) { var pd = parseOrderDate(ds); return (pd.month+1) + '月' + pd.day + '日'; }
+function shortOrderDate(ds) {
+  if (!ds) return '';
+  var p = String(ds).split('-');
+  if (p.length < 3) return ds;
+  return parseInt(p[1], 10) + '.' + parseInt(p[2], 10);
+}
 function parseOrderDate(ds) {
   // 安全解析 YYYY-MM-DD 日期字符串，避免移动端 new Date() 兼容性问题
   var parts = String(ds).split('-');
@@ -2452,9 +2466,9 @@ function renderOrders() {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px;color:var(--text-muted)">暂无商单排期记录</td></tr>';
   } else {
     tbody.innerHTML = sorted.map(function(o) {
-      return '<tr><td style="white-space:nowrap">'+formatDate(o.date)+'</td>'+
+      return '<tr><td style="white-space:nowrap"><span class="date-full">'+formatDate(o.date)+'</span><span class="date-short">'+shortOrderDate(o.date)+'</span></td>'+
         '<td style="font-weight:500" title="'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'</td>'+
-        '<td><span class="account-badge '+(o.account||'main')+'">'+(o.account==='sub'?'小号':'大号')+'</span></td>'+
+        '<td><span class="account-badge '+(o.account||'main')+'">'+(o.account==='sub'?'<span class="acc-full">小号</span><span class="acc-short">小</span>':'<span class="acc-full">大号</span><span class="acc-short">大</span>')+'</span></td>'+
         '<td style="font-weight:600;color:var(--success)">¥'+o.price.toLocaleString()+'</td>'+
         '<td style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</td>'+
         '<td>'+(o.refund>0 ? '<span class="refund-cell '+(o.refundDone?'done':'pending')+'" onclick="toggleRefundStatus(\''+o.id+'\')" title="点击切换返款状态"><span class="refund-amount">¥'+o.refund.toLocaleString()+'</span><span class="refund-check '+(o.refundDone?'checked':'')+'">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span></span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
