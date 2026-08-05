@@ -1,0 +1,41 @@
+name: Fund Daily Update
+
+on:
+  schedule:
+    # 北京 16:30（盘中后，最新可用为上一交易日净值）
+    - cron: "30 8 * * 1-5"
+    # 北京 22:30（收盘后当日净值已公布）
+    - cron: "30 14 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run fund update
+        run: python fund_update.py
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add fund-live.json
+          if git diff --cached --quiet; then
+            echo "no changes"
+          else
+            git commit -m "chore: auto-update fund-live.json ($(date +%F))"
+            git push
+          fi
