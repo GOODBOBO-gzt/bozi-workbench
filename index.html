@@ -1307,7 +1307,7 @@ body::before {
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
               <h2 style="font-size:17px;font-weight:700;color:var(--text-primary)">基金组合每日追踪</h2>
-              <p style="font-size:12px;color:var(--text-muted)">8只基金 · 总投入 <span id="fundHeaderCost">¥--</span> · <span id="fundUpdateTime">更新于 --</span></p>
+              <p style="font-size:12px;color:var(--text-muted)">8只基金 · 总投入 <span id="fundHeaderCost">¥--</span> · <span id="fundUpdateTime">更新于 --</span><span id="fundAutoTrack"></span></p>
             </div>
             <div style="text-align:right;">
               <div style="font-size:24px;font-weight:800;color:var(--text-primary)" id="fundTotalVal">--</div>
@@ -2801,6 +2801,9 @@ function bootstrap() {
 
   // 启动定时云端同步轮询（每30秒静默检查云端是否有更新）
   startSyncPolling();
+
+  // 启动基金每日自动跟踪（每天14:30跟踪当天实时估值并刷新操作建议）
+  startFundAutoTracking();
 }
 
 // ---- 定期云端同步 ----
@@ -2947,15 +2950,143 @@ function initFundBaseData() {
 
 function renderFundTracker() {
   if (!fundBaseData) fundBaseData = initFundBaseData();
-  doRenderFund(null);
-  if (fundEstimateStatus === 'idle') {
-    fundEstimateStatus = 'fetching';
+  var cache = loadFundEstCache();
+  if (cache && cache.date === todayStr()) {
+    doRenderFund(cache.data);
+  } else {
+    doRenderFund(null);
+  }
+  // 每日14:30自动跟踪：今天还没拉过当日估值则立即拉取并刷新建议
+  ensureFundEstimates(false, function(){});
+}
+
+// ==================== 基金每日自动跟踪（每天 14:30 跟踪当天实时估值） ====================
+var fundAutoTimer = null;
+var FUND_AUTO_DATE_KEY = 'fund_auto_date';
+var FUND_EST_CACHE_KEY = 'fund_est_cache';
+
+function todayStr(d) {
+  d = d || new Date();
+  var m = d.getMonth() + 1, day = d.getDate();
+  return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+}
+
+function isTradeDay(d) { var day = d.getDay(); return day >= 1 && day <= 5; }
+
+function nextTradeDayAt1430(from) {
+  var d = new Date(from.getFullYear(), from.getMonth(), from.getDate(), 14, 30, 0, 0);
+  d.setDate(d.getDate() + 1);
+  while (!isTradeDay(d)) { d.setDate(d.getDate() + 1); }
+  return d;
+}
+
+function loadFundEstCache() {
+  try { return wbGet(FUND_EST_CACHE_KEY, null); } catch (e) { return null; }
+}
+function saveFundEstCache(date, data) {
+  wbSet(FUND_EST_CACHE_KEY, { date: date, data: data, savedAt: Date.now() });
+}
+
+// 确保今日估值：有今日缓存直接用缓存渲染（不重复请求）；否则拉取当日估值并写入缓存
+function ensureFundEstimates(force, cb) {
+  var today = todayStr();
+  var cache = loadFundEstCache();
+  if (!force && cache && cache.date === today && cache.data && Object.keys(cache.data).length > 0) {
+    doRenderFund(cache.data);
+    updateFundAutoBadge();
+    if (cb) cb(cache.data);
+    return;
+  }
+  fetchFundEstimates(function(estimates) {
+    var cnt = 0; for (var k in estimates) cnt++;
+    if (cnt > 0) {
+      saveFundEstCache(today, estimates);
+      doRenderFund(estimates);
+      updateFundAutoBadge();
+    } else {
+      if (cache && cache.data) doRenderFund(cache.data);
+      updateFundAutoBadge();
+    }
+    if (cb) cb(estimates);
+  });
+}
+
+function updateFundAutoBadge() {
+  var el = document.getElementById('fundAutoTrack');
+  if (!el) return;
+  var now = new Date();
+  var today = todayStr();
+  var t1430 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0, 0);
+  var autoDone = wbGet(FUND_AUTO_DATE_KEY, '');
+  var isWeekday = isTradeDay(now);
+  if (autoDone === today) {
+    el.innerHTML = ' · <span style="color:var(--success)">✅ 今日14:30已自动跟踪</span>';
+  } else if (isWeekday && now >= t1430) {
+    el.innerHTML = ' · <span style="color:var(--warning)">⏳ 今日实时跟踪进行中…</span>';
+  } else if (isWeekday) {
+    el.innerHTML = ' · 下次自动跟踪：今日 14:30';
+  } else {
+    var nxt = nextTradeDayAt1430(now);
+    el.innerHTML = ' · 下次自动跟踪：' + (nxt.getMonth() + 1) + '/' + nxt.getDate() + ' 14:30';
+  }
+}
+
+function tryFundDailyAutoUpdate() {
+  if (fundAutoTimer) { clearTimeout(fundAutoTimer); fundAutoTimer = null; }
+  var now = new Date();
+  var today = todayStr();
+  var t1430 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0, 0);
+  var isWeekday = isTradeDay(now);
+  var autoDone = wbGet(FUND_AUTO_DATE_KEY, '');
+  if (isWeekday && now >= t1430 && autoDone !== today) {
     fetchFundEstimates(function(estimates) {
-      fundEstimateStatus = 'done';
-      var cnt = 0;
-      for (var k in estimates) cnt++;
-      if (cnt > 0) doRenderFund(estimates);
+      var cnt = 0; for (var k in estimates) cnt++;
+      if (cnt > 0) {
+        saveFundEstCache(today, estimates);
+        wbSet(FUND_AUTO_DATE_KEY, today);
+        if (document.getElementById('page-fund')) renderFundTracker();
+      }
+      scheduleNextFundAuto();
     });
+  } else {
+    scheduleNextFundAuto();
+  }
+}
+
+function scheduleNextFundAuto() {
+  if (fundAutoTimer) clearTimeout(fundAutoTimer);
+  var now = new Date();
+  var isWeekday = isTradeDay(now);
+  var t1430 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0, 0);
+  var next;
+  if (isWeekday && now < t1430) next = t1430;
+  else next = nextTradeDayAt1430(now);
+  var delay = next - now;
+  if (delay < 1000) delay = 1000;
+  if (delay > 24 * 3600 * 1000) delay = 24 * 3600 * 1000;
+  fundAutoTimer = setTimeout(tryFundDailyAutoUpdate, delay);
+}
+
+function startFundAutoTracking() {
+  var now = new Date();
+  var today = todayStr();
+  var t1430 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0, 0);
+  var isWeekday = isTradeDay(now);
+  var autoDone = wbGet(FUND_AUTO_DATE_KEY, '');
+  if (isWeekday && now >= t1430 && autoDone !== today) {
+    fetchFundEstimates(function(estimates) {
+      var cnt = 0; for (var k in estimates) cnt++;
+      if (cnt > 0) {
+        saveFundEstCache(today, estimates);
+        wbSet(FUND_AUTO_DATE_KEY, today);
+      }
+      scheduleNextFundAuto();
+      updateFundAutoBadge();
+      if (document.getElementById('page-fund')) renderFundTracker();
+    });
+  } else {
+    scheduleNextFundAuto();
+    updateFundAutoBadge();
   }
 }
 
@@ -3048,9 +3179,11 @@ function doRenderFund(estimates) {
   if (hasEstimate) {
     var gztime = '';
     funds.forEach(function(f) { if (f.estGztime) gztime = f.estGztime; });
-    document.getElementById('fundUpdateTime').innerHTML = '<span style="color:var(--danger)">⚡ 实时估值 ' + gztime + '</span>（基于 07-31 收盘净值估算）';
+    document.getElementById('fundUpdateTime').innerHTML = '<span style="color:var(--danger)">⚡ 实时估值 ' + gztime + '</span>';
   } else {
-    document.getElementById('fundUpdateTime').textContent = '更新于 08-03 14:45（净值日期 07-31）';
+    var cache0 = loadFundEstCache();
+    var cacheDate0 = cache0 ? cache0.date : todayStr();
+    document.getElementById('fundUpdateTime').textContent = '更新于 ' + cacheDate0 + '（基于最近净值估算）';
   }
 
   // ===== 保守策略 =====
