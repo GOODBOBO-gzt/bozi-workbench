@@ -1336,7 +1336,7 @@ body::before {
           <div class="fund-daily-total" id="fundDailyTotal"></div>
         </div>
 
-        <div class="fund-footer-note">数据来源：盈米基金 MCP · 仅供参考 · 基金有风险，投资需谨慎</div>
+        <div class="fund-footer-note">数据来源：东方财富基金净值（GitHub Actions 每日自动更新）· 仅供参考 · 基金有风险，投资需谨慎</div>
       </section>
     </div>
   </main>
@@ -2802,7 +2802,7 @@ function bootstrap() {
   // 启动定时云端同步轮询（每30秒静默检查云端是否有更新）
   startSyncPolling();
 
-  // 启动基金每日自动跟踪（每天14:30跟踪当天实时估值并刷新操作建议）
+  // 启动基金页自动刷新（每日收盘后由 GitHub Actions 自动更新净值与建议）
   startFundAutoTracking();
 }
 
@@ -2930,190 +2930,85 @@ var fundBaseData = null;
 var fundEstimateStatus = 'idle';
 
 function initFundBaseData() {
-  var funds = [
-    {code:"001438",name:"易方达瑞享混合E",cost:11051,ret:-0.1763,nav:7.7467,mgr:"武阳",mgrAnn:25.63,risk:"中高风险",type:"混合-灵活",yr1:0.9693,yr1txt:"+96.9%",ytd:0.4015,ytdtxt:"+40.2%",m1:-0.3621,m1txt:"-36.2%",vol:0.5556,maxdd:-0.4026,stock:0.944,topInd:"制造业83%",canBuy:true,score:5,scoreTag:"优质"},
-    {code:"001753",name:"红土创新新兴产业混合A",cost:4009,ret:-0.3317,nav:3.738,mgr:"廖星昊",mgrAnn:28.46,risk:"中高风险",type:"混合-灵活",yr1:1.2001,yr1txt:"+120.0%",ytd:0.3667,ytdtxt:"+36.7%",m1:-0.3907,m1txt:"-39.1%",vol:0.45,maxdd:-0.35,stock:0.916,topInd:"制造业82%",canBuy:true,score:6,scoreTag:"优质"},
-    {code:"008327",name:"东财中证通信C",cost:8761,ret:-0.3379,nav:3.7238,mgr:"姚楠燕",mgrAnn:80.34,risk:"中高风险",type:"股票-指数",yr1:1.2475,yr1txt:"+124.8%",ytd:0.3581,ytdtxt:"+35.8%",m1:-0.3522,m1txt:"-35.2%",vol:0.40,maxdd:-0.35,stock:0.953,topInd:"制造业94%",canBuy:true,score:5,scoreTag:"优质"},
-    {code:"001216",name:"易方达新收益混合A",cost:7345,ret:0.0521,nav:3.976,mgr:"张清华",mgrAnn:17.22,risk:"中高风险",type:"混合-灵活",yr1:0.4061,yr1txt:"+40.6%",ytd:0.2450,ytdtxt:"+24.5%",m1:-0.3079,m1txt:"-30.8%",vol:0.30,maxdd:-0.25,stock:0.948,topInd:"制造业75%",canBuy:true,score:5,scoreTag:"优质"},
-    {code:"570001",name:"诺德价值优势混合",cost:6845,ret:0.0335,nav:3.0814,mgr:"罗世锋",mgrAnn:13.20,risk:"中高风险",type:"混合-偏股",yr1:0.3975,yr1txt:"+39.8%",ytd:0.0535,ytdtxt:"+5.4%",m1:-0.1849,m1txt:"-18.5%",vol:0.30,maxdd:-0.28,stock:0.934,topInd:"制造业77%",canBuy:true,score:4,scoreTag:"良好"},
-    {code:"161725",name:"招商中证白酒指数A",cost:3101,ret:-0.4587,nav:0.5842,mgr:"侯昊",mgrAnn:5.71,risk:"中高风险",type:"股票-指数",yr1:-0.2167,yr1txt:"-21.7%",ytd:-0.1771,ytdtxt:"-17.7%",m1:0.1477,m1txt:"+14.8%",vol:0.27,maxdd:-0.33,stock:0.948,topInd:"白酒94%",canBuy:true,score:0,scoreTag:"观望"},
-    {code:"000294",name:"华安生态优先混合A",cost:30733,ret:-0.3613,nav:2.767,mgr:"陈媛",mgrAnn:5.77,risk:"中高风险",type:"混合-偏股",yr1:0.0618,yr1txt:"+6.2%",ytd:-0.0047,ytdtxt:"-0.5%",m1:-0.3329,m1txt:"-33.3%",vol:0.357,maxdd:-0.347,stock:0.893,topInd:"制造业83%",canBuy:true,score:1,scoreTag:"观望"},
-    {code:"162605",name:"景顺长城鼎益混合(LOF)A",cost:19515,ret:-0.4351,nav:1.502,mgr:"刘彦春",mgrAnn:6.75,risk:"中高风险",type:"混合-偏股",yr1:-0.1702,yr1txt:"-17.0%",ytd:-0.1571,ytdtxt:"-15.7%",m1:-0.2765,m1txt:"-27.6%",vol:0.276,maxdd:-0.297,stock:0.918,topInd:"制造业83%",canBuy:true,score:0,scoreTag:"观望"}
+  // 真实基础持仓：份额(shares)与投入成本(investedCost)由用户持仓金额与收益率反推
+  // （2026-08-05 快照，基于 2026-08-04 最新净值）。costNav = investedCost / shares（买入时的成本净值）
+  var raw = [
+    {code:"001438",name:"易方达瑞享混合E",shares:1426.46,investedCost:13415.04,nav:8.4405,mgr:"武阳",mgrAnn:25.63,risk:"中高风险",type:"混合-灵活",yr1:0.9693,yr1txt:"+96.9%",ytd:0.4015,ytdtxt:"+40.2%",m1:-0.3621,m1txt:"-36.2%",vol:0.5556,maxdd:-0.4026,stock:0.944,topInd:"制造业83%",canBuy:true,score:5,scoreTag:"优质"},
+    {code:"001753",name:"红土创新新兴产业混合A",shares:1072.51,investedCost:5999.44,nav:4.013,mgr:"廖星昊",mgrAnn:28.46,risk:"中高风险",type:"混合-灵活",yr1:1.2001,yr1txt:"+120.0%",ytd:0.3667,ytdtxt:"+36.7%",m1:-0.3907,m1txt:"-39.1%",vol:0.45,maxdd:-0.35,stock:0.916,topInd:"制造业82%",canBuy:true,score:6,scoreTag:"优质"},
+    {code:"008327",name:"东财中证通信C",shares:2352.74,investedCost:13232.73,nav:4.0625,mgr:"姚楠燕",mgrAnn:80.34,risk:"中高风险",type:"股票-指数",yr1:1.2475,yr1txt:"+124.8%",ytd:0.3581,ytdtxt:"+35.8%",m1:-0.3522,m1txt:"-35.2%",vol:0.40,maxdd:-0.35,stock:0.953,topInd:"制造业94%",canBuy:true,score:5,scoreTag:"优质"},
+    {code:"001216",name:"易方达新收益混合A",shares:1847.29,investedCost:6983.20,nav:4.0286,mgr:"张清华",mgrAnn:17.22,risk:"中高风险",type:"混合-灵活",yr1:0.4061,yr1txt:"+40.6%",ytd:0.2450,ytdtxt:"+24.5%",m1:-0.3079,m1txt:"-30.8%",vol:0.30,maxdd:-0.25,stock:0.948,topInd:"制造业75%",canBuy:true,score:5,scoreTag:"优质"},
+    {code:"570001",name:"诺德价值优势混合",shares:2221.20,investedCost:6622.94,nav:3.1591,mgr:"罗世锋",mgrAnn:13.20,risk:"中高风险",type:"混合-偏股",yr1:0.3975,yr1txt:"+39.8%",ytd:0.0535,ytdtxt:"+5.4%",m1:-0.1849,m1txt:"-18.5%",vol:0.30,maxdd:-0.28,stock:0.934,topInd:"制造业77%",canBuy:true,score:4,scoreTag:"良好"},
+    {code:"161725",name:"招商中证白酒指数A",shares:5307.84,investedCost:5727.81,nav:0.5701,mgr:"侯昊",mgrAnn:5.71,risk:"中高风险",type:"股票-指数",yr1:-0.2167,yr1txt:"-21.7%",ytd:-0.1771,ytdtxt:"-17.7%",m1:0.1477,m1txt:"+14.8%",vol:0.27,maxdd:-0.33,stock:0.948,topInd:"白酒94%",canBuy:true,score:0,scoreTag:"观望"},
+    {code:"000294",name:"华安生态优先混合A",shares:11106.96,investedCost:48116.93,nav:2.786,mgr:"陈媛",mgrAnn:5.77,risk:"中高风险",type:"混合-偏股",yr1:0.0618,yr1txt:"+6.2%",ytd:-0.0047,ytdtxt:"-0.5%",m1:-0.3329,m1txt:"-33.3%",vol:0.357,maxdd:-0.347,stock:0.893,topInd:"制造业83%",canBuy:true,score:1,scoreTag:"观望"},
+    {code:"162605",name:"景顺长城鼎益混合(LOF)A",shares:12992.88,investedCost:34587.93,nav:1.544,mgr:"刘彦春",mgrAnn:6.75,risk:"中高风险",type:"混合-偏股",yr1:-0.1702,yr1txt:"-17.0%",ytd:-0.1571,ytdtxt:"-15.7%",m1:-0.2765,m1txt:"-27.6%",vol:0.276,maxdd:-0.297,stock:0.918,topInd:"制造业83%",canBuy:true,score:0,scoreTag:"观望"}
   ];
-  funds.forEach(function(f) {
-    f.costNav = f.nav / (1 + f.ret);
-    f.investedCost = f.cost / (1 + f.ret);
-    f.shares = Math.round(f.cost / f.nav);
+  raw.forEach(function(f) {
+    f.costNav = f.investedCost / f.shares;   // 成本净值
+    f.cost = f.investedCost;                 // 补仓金额基准 = 投入成本
   });
-  return funds;
+  return raw;
 }
 
 function renderFundTracker() {
   if (!fundBaseData) fundBaseData = initFundBaseData();
-  var cache = loadFundEstCache();
-  if (cache && cache.date === todayStr()) {
-    doRenderFund(cache.data);
-  } else {
-    doRenderFund(null);
-  }
-  // 每日14:30自动跟踪：今天还没拉过当日估值则立即拉取并刷新建议
-  ensureFundEstimates(false, function(){});
+  fetchFundLive(function(live) {
+    if (live && live.funds && live.funds.length) {
+      applyFundLive(live);
+    } else {
+      // 本地打开或网络不可达时的静态兜底：initFundBaseData 已含真实今日快照
+      doRenderFund(null);
+      updateFundLiveBadge(null);
+    }
+  });
 }
 
-// ==================== 基金每日自动跟踪（每天 14:30 跟踪当天实时估值） ====================
-var fundAutoTimer = null;
-var FUND_AUTO_DATE_KEY = 'fund_auto_date';
-var FUND_EST_CACHE_KEY = 'fund_est_cache';
-
+// ==================== 基金每日自动更新（数据由 GitHub Actions 每日收盘后写入 fund-live.json） ====================
 function todayStr(d) {
   d = d || new Date();
   var m = d.getMonth() + 1, day = d.getDate();
   return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
 }
 
-function isTradeDay(d) { var day = d.getDay(); return day >= 1 && day <= 5; }
 
-function nextTradeDayAt1430(from) {
-  var d = new Date(from.getFullYear(), from.getMonth(), from.getDate(), 14, 30, 0, 0);
-  d.setDate(d.getDate() + 1);
-  while (!isTradeDay(d)) { d.setDate(d.getDate() + 1); }
-  return d;
+
+// 打开基金页时每 15 分钟静默刷新一次，赶上每日自动更新后的最新净值
+var fundLiveTimer = null;
+function startFundAutoTracking() {
+  if (fundLiveTimer) clearInterval(fundLiveTimer);
+  fundLiveTimer = setInterval(function() {
+    var p = document.getElementById('page-fund');
+    if (p && p.classList.contains('active')) renderFundTracker();
+  }, 15 * 60 * 1000);
 }
 
-function loadFundEstCache() {
-  try { return wbGet(FUND_EST_CACHE_KEY, null); } catch (e) { return null; }
-}
-function saveFundEstCache(date, data) {
-  wbSet(FUND_EST_CACHE_KEY, { date: date, data: data, savedAt: Date.now() });
+// 读取每日自动生成的 fund-live.json（与 GitHub Pages 同源，带时间戳防缓存）
+function fetchFundLive(callback) {
+  var url = 'fund-live.json?t=' + Date.now();
+  fetch(url, { cache: 'no-store' }).then(function(r) {
+    if (!r.ok) throw new Error('http ' + r.status);
+    return r.json();
+  }).then(function(json) { callback(json); })
+    .catch(function() { callback(null); });
 }
 
-// 确保今日估值：有今日缓存直接用缓存渲染（不重复请求）；否则拉取当日估值并写入缓存
-function ensureFundEstimates(force, cb) {
-  var today = todayStr();
-  var cache = loadFundEstCache();
-  if (!force && cache && cache.date === today && cache.data && Object.keys(cache.data).length > 0) {
-    doRenderFund(cache.data);
-    updateFundAutoBadge();
-    if (cb) cb(cache.data);
-    return;
-  }
-  fetchFundEstimates(function(estimates) {
-    var cnt = 0; for (var k in estimates) cnt++;
-    if (cnt > 0) {
-      saveFundEstCache(today, estimates);
-      doRenderFund(estimates);
-      updateFundAutoBadge();
-    } else {
-      if (cache && cache.data) doRenderFund(cache.data);
-      updateFundAutoBadge();
-    }
-    if (cb) cb(estimates);
+// 将 fund-live.json 映射为 doRenderFund 兼容的估值结构（code -> {gsz, gszzl, gztime}）
+function applyFundLive(live) {
+  var est = {};
+  (live.funds || []).forEach(function(f) {
+    est[f.code] = { fundcode: f.code, gsz: f.nav, gszzl: f.dayChg, gztime: f.navDate };
   });
+  doRenderFund(est);
+  updateFundLiveBadge(live);
 }
 
-function updateFundAutoBadge() {
+function updateFundLiveBadge(live) {
   var el = document.getElementById('fundAutoTrack');
   if (!el) return;
-  var now = new Date();
-  var today = todayStr();
-  var t1430 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0, 0);
-  var autoDone = wbGet(FUND_AUTO_DATE_KEY, '');
-  var isWeekday = isTradeDay(now);
-  if (autoDone === today) {
-    el.innerHTML = ' · <span style="color:var(--success)">✅ 今日14:30已自动跟踪</span>';
-  } else if (isWeekday && now >= t1430) {
-    el.innerHTML = ' · <span style="color:var(--warning)">⏳ 今日实时跟踪进行中…</span>';
-  } else if (isWeekday) {
-    el.innerHTML = ' · 下次自动跟踪：今日 14:30';
+  if (live && live.navDate) {
+    el.innerHTML = ' · <span style="color:var(--success)">✅ 已自动更新（净值 ' + live.navDate + '）</span>';
   } else {
-    var nxt = nextTradeDayAt1430(now);
-    el.innerHTML = ' · 下次自动跟踪：' + (nxt.getMonth() + 1) + '/' + nxt.getDate() + ' 14:30';
+    el.innerHTML = ' · <span style="color:var(--text-muted)">📅 每日收盘后自动更新</span>';
   }
-}
-
-function tryFundDailyAutoUpdate() {
-  if (fundAutoTimer) { clearTimeout(fundAutoTimer); fundAutoTimer = null; }
-  var now = new Date();
-  var today = todayStr();
-  var t1430 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0, 0);
-  var isWeekday = isTradeDay(now);
-  var autoDone = wbGet(FUND_AUTO_DATE_KEY, '');
-  if (isWeekday && now >= t1430 && autoDone !== today) {
-    fetchFundEstimates(function(estimates) {
-      var cnt = 0; for (var k in estimates) cnt++;
-      if (cnt > 0) {
-        saveFundEstCache(today, estimates);
-        wbSet(FUND_AUTO_DATE_KEY, today);
-        if (document.getElementById('page-fund')) renderFundTracker();
-      }
-      scheduleNextFundAuto();
-    });
-  } else {
-    scheduleNextFundAuto();
-  }
-}
-
-function scheduleNextFundAuto() {
-  if (fundAutoTimer) clearTimeout(fundAutoTimer);
-  var now = new Date();
-  var isWeekday = isTradeDay(now);
-  var t1430 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0, 0);
-  var next;
-  if (isWeekday && now < t1430) next = t1430;
-  else next = nextTradeDayAt1430(now);
-  var delay = next - now;
-  if (delay < 1000) delay = 1000;
-  if (delay > 24 * 3600 * 1000) delay = 24 * 3600 * 1000;
-  fundAutoTimer = setTimeout(tryFundDailyAutoUpdate, delay);
-}
-
-function startFundAutoTracking() {
-  var now = new Date();
-  var today = todayStr();
-  var t1430 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0, 0);
-  var isWeekday = isTradeDay(now);
-  var autoDone = wbGet(FUND_AUTO_DATE_KEY, '');
-  if (isWeekday && now >= t1430 && autoDone !== today) {
-    fetchFundEstimates(function(estimates) {
-      var cnt = 0; for (var k in estimates) cnt++;
-      if (cnt > 0) {
-        saveFundEstCache(today, estimates);
-        wbSet(FUND_AUTO_DATE_KEY, today);
-      }
-      scheduleNextFundAuto();
-      updateFundAutoBadge();
-      if (document.getElementById('page-fund')) renderFundTracker();
-    });
-  } else {
-    scheduleNextFundAuto();
-    updateFundAutoBadge();
-  }
-}
-
-function fetchFundEstimates(callback) {
-  var codes = ["001438","001753","008327","001216","570001","161725","000294","162605"];
-  var results = {};
-  var done = 0;
-  var called = false;
-  function finish() { if (!called) { called = true; callback(results); } }
-  codes.forEach(function(code, idx) {
-    var cbName = 'fundCb_' + idx + '_' + Date.now();
-    window[cbName] = function(data) {
-      if (data && data.fundcode) results[data.fundcode] = data;
-      done++;
-      try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
-      if (done >= codes.length) finish();
-    };
-    var script = document.createElement('script');
-    script.src = 'https://fundgz.1234567.com.cn/js/' + code + '.js?rt=' + Date.now() + '&cb=' + cbName;
-    script.onerror = function() {
-      done++;
-      try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
-      if (done >= codes.length) finish();
-    };
-    document.body.appendChild(script);
-  });
-  setTimeout(finish, 6000);
 }
 
 function doRenderFund(estimates) {
@@ -3179,10 +3074,9 @@ function doRenderFund(estimates) {
   if (hasEstimate) {
     var gztime = '';
     funds.forEach(function(f) { if (f.estGztime) gztime = f.estGztime; });
-    document.getElementById('fundUpdateTime').innerHTML = '<span style="color:var(--danger)">⚡ 实时估值 ' + gztime + '</span>';
+    document.getElementById('fundUpdateTime').innerHTML = '<span style="color:var(--danger)">⚡ 最新净值 ' + gztime + '</span>';
   } else {
-    var cache0 = loadFundEstCache();
-    var cacheDate0 = cache0 ? cache0.date : todayStr();
+    var cacheDate0 = todayStr();
     document.getElementById('fundUpdateTime').textContent = '更新于 ' + cacheDate0 + '（基于最近净值估算）';
   }
 
@@ -3345,8 +3239,8 @@ function doRenderFund(estimates) {
       banner.style.background = 'var(--warning-soft)';
       banner.style.color = '#8b5a2b';
       banner.innerHTML = hasEstimate ?
-        '⚡ <strong>已获取实时估值</strong>，当前建议基于今日实时估算净值。3点前操作按今日净值成交。' :
-        '⚡ <strong>净值尚未确定</strong>，建议 14:30-14:55 操作。当前建议基于上次收盘数据。';
+        '⚡ <strong>已获取最新净值</strong>，当前建议基于最新收盘净值。3点前操作按今日净值成交。' :
+        '📅 <strong>净值已更新</strong>，当前建议基于最新净值。';
     } else {
       tsEl.innerHTML = '<span style="color:var(--text-muted)">🌙 非交易时段</span>';
       tsEl.style.background = 'var(--input-bg)';
