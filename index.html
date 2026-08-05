@@ -1369,6 +1369,22 @@ function wbSet(k, v) { localStorage.setItem('wb_'+k, JSON.stringify(v)); }
 var todos = wbGet('todos', []);
 var orders = wbGet('orders', []);
 var schedules = wbGet('schedules', []);
+function normalizeOrderData(list) {
+  return (Array.isArray(list) ? list : []).map(function(o, index) {
+    o = o || {};
+    if (o.price == null) o.price = Number(o.amount) || 0;
+    if (o.cost == null) o.cost = Number(o.cost) || 0;
+    if (o.refund == null) o.refund = Number(o.rebate) || 0;
+    if (o.barter == null) o.barter = Number(o.exchange) || 0;
+    if (o.done == null) o.done = o.status === 'done' || o.status === 'completed';
+    if (o.account === '大号') o.account = 'main';
+    if (o.account === '小号') o.account = 'sub';
+    if (o.id == null) o.id = 'order_migrated_' + (o.date || 'unknown') + '_' + index;
+    return o;
+  });
+}
+orders = normalizeOrderData(orders);
+wbSet('orders', orders);
 var schWeekOffset = 0; // 0=本周, -1=上周, 1=下周
 // 数据迁移：旧 text 字段 → 新 title/detail 结构
 var migrated = false;
@@ -1556,7 +1572,7 @@ function pullFromCloud(callback, force) {
         // force=true 时强制拉取；否则本地为空或云端更新才拉取
         var shouldPull = force || !hasLocalData || cloudUpdated > localUpdated;
         if (shouldPull) {
-          todos = cloud.todos || []; orders = cloud.orders || []; schedules = cloud.schedules || [];
+          todos = cloud.todos || []; orders = normalizeOrderData(cloud.orders || []); schedules = cloud.schedules || [];
           wbSet('todos', todos); wbSet('orders', orders); wbSet('schedules', schedules);
           wbSet('sb_lastSync', cloudUpdated);
           renderTodos(); renderOrders(); renderSchedule();
@@ -2391,9 +2407,9 @@ function renderOrders() {
     if (mbnOB) { mbnOB.textContent = pendingCount; mbnOB.classList.toggle('show', pendingCount > 0); }
     return;
   }
-  tableWrap.style.display = '';
+  tableWrap.style.display = 'block';
   calWrap.style.display = 'none';
-  mobileCards.style.display = '';
+  mobileCards.style.display = 'none';
 
   var filtered = currentFilter === 'all' ? orders : orders.filter(function(o) { return currentFilter === 'done' ? o.done : !o.done; });
   var sorted = [].concat(filtered).sort(function(a, b) { return parseOrderDate(a.date).ts - parseOrderDate(b.date).ts; });
@@ -2412,14 +2428,14 @@ function renderOrders() {
         '<td><span class="account-badge '+(o.account||'main')+'">'+(o.account==='sub'?'小号':'大号')+'</span></td>'+
         '<td style="font-weight:600;color:var(--success)">¥'+o.price.toLocaleString()+'</td>'+
         '<td style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</td>'+
-        '<td>'+(o.refund>0 ? '<span class="refund-cell '+(o.refundDone?'done':'pending')+'" onclick="toggleRefundStatus('+o.id+')" title="点击切换返款状态"><span class="refund-amount">¥'+o.refund.toLocaleString()+'</span><span class="refund-check '+(o.refundDone?'checked':'')+'">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span></span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
+        '<td>'+(o.refund>0 ? '<span class="refund-cell '+(o.refundDone?'done':'pending')+'" onclick="toggleRefundStatus(\''+o.id+'\')" title="点击切换返款状态"><span class="refund-amount">¥'+o.refund.toLocaleString()+'</span><span class="refund-check '+(o.refundDone?'checked':'')+'">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span></span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
         '<td>'+(o.barter>0 ? '<span style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
         '<td style="font-size:13px;color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHtml(o.note||'')+'">'+ (o.note ? escapeHtml(o.note) : '<span style="opacity:0.4">-</span>') +'</td>'+
         '<td><span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></td>'+
         '<td><div class="order-actions">'+
-          '<button class="btn btn-icon btn-ghost btn-sm" onclick="toggleOrderStatus('+o.id+')" title="'+(o.done?'标记待发布':'标记完成')+'">'+(o.done?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 0118 0M3 12a9 9 0 1018 0"/></svg>':'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>')+'</button>'+
-          '<button class="btn btn-icon btn-ghost btn-sm" onclick="openOrderModal('+o.id+')" title="编辑"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>'+
-          '<button class="btn btn-icon btn-danger btn-sm" onclick="deleteOrder('+o.id+')" title="删除"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>'+
+          '<button class="btn btn-icon btn-ghost btn-sm" onclick="toggleOrderStatus(\''+o.id+'\')" title="'+(o.done?'标记待发布':'标记完成')+'">'+(o.done?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 0118 0M3 12a9 9 0 1018 0"/></svg>':'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>')+'</button>'+
+          '<button type="button" class="btn btn-icon btn-ghost btn-sm" data-order-id="'+escapeHtml(String(o.id))+'" onclick="openOrderModalFromButton(this)" title="编辑"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>'+
+          '<button class="btn btn-icon btn-danger btn-sm" onclick="deleteOrder(\''+o.id+'\')" title="删除"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>'+
         '</div></td></tr>';
     }).join('');
   }
@@ -2438,22 +2454,30 @@ function renderOrders() {
             '<div><div class="card-label">报价</div><div class="card-value" style="color:var(--success);font-weight:600">¥'+o.price.toLocaleString()+'</div></div>'+
             '<div><div class="card-label">成本</div><div class="card-value" style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</div></div>'+
           '</div>'+
-          (o.refund>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">返款</div><div class="card-value" style="color:'+(o.refundDone?'var(--success)':'var(--text-muted)')+';font-weight:600">¥'+o.refund.toLocaleString()+'</div></div><div style="display:flex;align-items:center;gap:6px;align-self:flex-end"><span class="refund-check '+(o.refundDone?'checked':'')+'" style="width:22px;height:22px;border-radius:7px" onclick="event.stopPropagation();toggleRefundStatus('+o.id+')">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span><span style="font-size:12px;color:var(--text-muted)">'+(o.refundDone?'已返款':'待返款')+'</span></div></div>' : '')+
+          (o.refund>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">返款</div><div class="card-value" style="color:'+(o.refundDone?'var(--success)':'var(--text-muted)')+';font-weight:600">¥'+o.refund.toLocaleString()+'</div></div><div style="display:flex;align-items:center;gap:6px;align-self:flex-end"><span class="refund-check '+(o.refundDone?'checked':'')+'" style="width:22px;height:22px;border-radius:7px" onclick="event.stopPropagation();toggleRefundStatus(\''+o.id+'\')">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span><span style="font-size:12px;color:var(--text-muted)">'+(o.refundDone?'已返款':'待返款')+'</span></div></div>' : '')+
           (o.barter>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">置换价值</div><div class="card-value" style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</div></div></div>' : '')+
         '</div>'+
         '<div class="card-actions">'+
-          '<button class="btn btn-ghost btn-sm" style="flex:1" onclick="toggleOrderStatus('+o.id+')">'+(o.done?'标记待发布':'标记完成')+'</button>'+
-          '<button class="btn btn-ghost btn-sm order-expand-btn" id="orderExpandBtn-'+o.id+'" onclick="toggleOrderDetail('+o.id+')">展开详情</button>'+
-          '<button class="btn btn-ghost btn-sm" onclick="openOrderModal('+o.id+')">编辑</button>'+
-          '<button class="btn btn-danger btn-sm" onclick="deleteOrder('+o.id+')">删除</button>'+
+          '<button class="btn btn-ghost btn-sm" style="flex:1" onclick="toggleOrderStatus(\''+o.id+'\')">'+(o.done?'标记待发布':'标记完成')+'</button>'+
+          '<button class="btn btn-ghost btn-sm order-expand-btn" id="orderExpandBtn-'+o.id+'" onclick="toggleOrderDetail(\''+o.id+'\')">展开详情</button>'+
+          '<button type="button" class="btn btn-ghost btn-sm" data-order-id="'+escapeHtml(String(o.id))+'" onclick="openOrderModalFromButton(this)">编辑</button>'+
+          '<button class="btn btn-danger btn-sm" onclick="deleteOrder(\''+o.id+'\')">删除</button>'+
         '</div></div>';
     }).join('');
   }
 }
 
+function findOrderById(id) { return orders.find(function(o) { return String(o.id) === String(id); }); }
+
+function openOrderModalFromButton(button) {
+  var id = button && button.getAttribute('data-order-id');
+  if (!id) { toast('未找到商单记录', 'error'); return; }
+  openOrderModal(id);
+}
+
 function openOrderModal(id) {
   editingOrderId = id || null;
-  var order = id ? orders.find(function(o) { return o.id === id; }) : null;
+  var order = id ? findOrderById(id) : null;
   var today = new Date().toISOString().split('T')[0];
   showModal(
     '<div class="modal">'+
@@ -2492,7 +2516,7 @@ function saveOrder() {
   if (!product) { toast('请输入合作产品', 'error'); return; }
   if (price <= 0) { toast('请输入有效报价', 'error'); return; }
   if (editingOrderId) {
-    var o = orders.find(function(x) { return x.id === editingOrderId; });
+    var o = findOrderById(editingOrderId);
     if (o) {
       o.date = date; o.product = product; o.account = account; o.price = price; o.cost = cost; o.refund = refund; o.refundDone = refundDone; o.barter = barter; o.note = note;
       var se = document.getElementById('orderStatus');
@@ -2507,12 +2531,12 @@ function saveOrder() {
 }
 
 function toggleOrderStatus(id) {
-  var o = orders.find(function(x) { return x.id === id; });
+  var o = findOrderById(id);
   if (o) { o.done = !o.done; wbSet('orders', orders); renderOrders(); autoSyncToCloud(); toast(o.done ? '已标记为已完成' : '已标记为待发布', 'success'); }
 }
 
 function toggleRefundStatus(id) {
-  var o = orders.find(function(x) { return x.id === id; });
+  var o = findOrderById(id);
   if (o) { o.refundDone = !o.refundDone; wbSet('orders', orders); renderOrders(); autoSyncToCloud(); toast(o.refundDone ? '已标记为已返款' : '已标记为待返款', 'success'); }
 }
 
@@ -2533,7 +2557,7 @@ function toggleOrderDetail(id) {
 
 function deleteOrder(id) {
   if (!confirm('确认删除这条商单排期？')) return;
-  orders = orders.filter(function(o) { return o.id !== id; });
+  orders = orders.filter(function(o) { return String(o.id) !== String(id); });
   wbSet('orders', orders); renderOrders(); autoSyncToCloud(); toast('排期已删除', 'success');
 }
 
