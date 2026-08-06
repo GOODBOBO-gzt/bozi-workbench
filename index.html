@@ -1147,6 +1147,24 @@ body::before {
 .fund-advice-box.sell { background: var(--success-soft); color: #3f9277; }
 .fund-advice-box.warn { background: var(--warning-soft); color: #6b4f3a; }
 .fund-tip-bar { margin: 0 12px 12px; font-size: 11px; color: var(--text-muted); padding: 6px 10px; background: var(--input-bg); border-radius: 8px; }
+.fund-txn { display:flex; align-items:center; gap:8px; margin:10px 12px 4px; flex-wrap:wrap; }
+.txn-badge { font-size:11px; color:var(--text-muted); padding:2px 8px; border-radius:999px; background:var(--input-bg); }
+.txn-badge.has { color:var(--accent); background:var(--accent-soft); }
+.txn-btn { font-size:12px; font-weight:600; padding:5px 12px; border-radius:8px; border:1px solid var(--accent); background:var(--accent-soft); color:var(--accent); cursor:pointer; }
+.txn-btn:hover { background:var(--accent); color:#fff; }
+.txn-reset { font-size:11px; color:var(--text-muted); background:none; border:none; cursor:pointer; text-decoration:underline; margin-left:auto; }
+.txn-form { display:flex; align-items:center; gap:8px; margin:6px 12px 12px; flex-wrap:wrap; padding:10px; background:var(--input-bg); border-radius:10px; }
+.txn-seg { display:flex; border:1px solid var(--divider); border-radius:8px; overflow:hidden; }
+.txn-seg-btn { font-size:12px; padding:5px 12px; border:none; background:var(--card-bg); color:var(--text-muted); cursor:pointer; }
+.txn-seg-btn.active { background:var(--accent); color:#fff; }
+.txn-amt { width:110px; padding:6px 8px; border:1px solid var(--divider); border-radius:8px; font-size:13px; background:var(--card-bg); color:var(--text-primary); }
+.txn-date { padding:5px 8px; border:1px solid var(--divider); border-radius:8px; font-size:12px; background:var(--card-bg); color:var(--text-primary); }
+.txn-save { font-size:12px; font-weight:700; padding:6px 14px; border:none; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; }
+.txn-cancel { font-size:12px; padding:6px 12px; border:1px solid var(--divider); border-radius:8px; background:var(--card-bg); color:var(--text-muted); cursor:pointer; }
+.txn-toolbar { display:flex; align-items:center; gap:8px; margin-left:auto; }
+.txn-tool-btn { font-size:12px; padding:5px 12px; border:1px solid var(--accent); border-radius:8px; background:var(--accent-soft); color:var(--accent); cursor:pointer; }
+.txn-tool-btn.ghost { border-color:var(--divider); background:var(--card-bg); color:var(--text-muted); }
+.txn-global-badge { font-size:11px; color:var(--accent); }
 .fund-action-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
 @media (max-width: 600px) { .fund-action-summary { grid-template-columns: 1fr; } }
 .fund-action-grp { padding: 14px; border-radius: 12px; background: var(--card-bg); border: 1px solid var(--glass-border-light); }
@@ -1368,7 +1386,7 @@ input[type="text"], input[type="number"], input[type="date"], input[type="search
         </div>
 
         <div class="glass-card" style="padding:18px 20px;margin-bottom:14px;">
-          <div class="section-header"><div class="section-title"><span class="dot"></span>全部持仓</div></div>
+          <div class="section-header"><div class="section-title"><span class="dot"></span>全部持仓</div><div class="txn-toolbar"><span id="txnGlobalBadge" class="txn-global-badge"></span><button type="button" id="txnExportBtn" class="txn-tool-btn">📤 导出回填记录</button><button type="button" id="txnClearBtn" class="txn-tool-btn ghost">🗑 清空本地</button></div></div>
           <div class="fund-card-grid" id="fundGrid"></div>
         </div>
 
@@ -3066,8 +3084,109 @@ function updateFundLiveBadge(live) {
   }
 }
 
+// ===== 用户手动交易回填（localStorage 持久化，精准更新持仓）=====
+var TXN_KEY = 'bozi_fund_txns_v1';
+var gLastEstimates = null;
+var gNavByCode = {};
+function loadTxns() { try { return JSON.parse(localStorage.getItem(TXN_KEY) || '{}'); } catch(e) { return {}; } }
+function saveTxns(o) { try { localStorage.setItem(TXN_KEY, JSON.stringify(o)); } catch(e) {} }
+function countTxns() { var o = loadTxns(), n = 0; for (var k in o) n += (o[k] && o[k].length) || 0; return n; }
+function applyTxns(funds) {
+  var txns = loadTxns();
+  funds.forEach(function(f) {
+    var list = txns[f.code];
+    if (!list || !list.length) { f.txnCount = 0; return; }
+    f.txnCount = list.length;
+    list.forEach(function(tx) {
+      var nav = (typeof tx.nav === 'number' && tx.nav > 0) ? tx.nav : f.nav;
+      if (tx.t === 'buy') {
+        f.shares += tx.amt / nav;
+        f.investedCost += tx.amt;
+      } else {
+        var s = tx.amt / nav;
+        if (s > f.shares) s = f.shares;
+        f.shares -= s;
+        f.investedCost -= f.costNav * s;
+        if (f.investedCost < 0) f.investedCost = 0;
+      }
+    });
+    if (f.shares > 0) f.costNav = f.investedCost / f.shares;
+    f.cost = f.investedCost;
+  });
+}
+var gTxnUIReady = false;
+function initFundTxnUI() {
+  if (gTxnUIReady) return; gTxnUIReady = true;
+  var grid = document.getElementById('fundGrid');
+  if (grid) grid.addEventListener('click', onGridTxnClick);
+  var eb = document.getElementById('txnExportBtn');
+  if (eb) eb.addEventListener('click', exportTxns);
+  var cb = document.getElementById('txnClearBtn');
+  if (cb) cb.addEventListener('click', function() {
+    if (!confirm('清空全部本地回填记录？\n（仅清除本浏览器记录，不影响线上数据）')) return;
+    saveTxns({}); doRenderFund(gLastEstimates); updateTxnBadge();
+  });
+}
+function onGridTxnClick(e) {
+  var seg = e.target.closest('.txn-seg-btn');
+  if (seg) { setSeg(document.getElementById('txnf-' + seg.getAttribute('data-code')), seg.getAttribute('data-mode')); return; }
+  var t = e.target.closest('[data-act]');
+  if (!t) return;
+  var act = t.getAttribute('data-act'), code = t.getAttribute('data-code');
+  if (act === 'open') {
+    setSeg(document.getElementById('txnf-' + code), t.getAttribute('data-mode'));
+    var form = document.getElementById('txnf-' + code); form.style.display = 'block';
+    var inp = document.getElementById('txna-' + code); if (inp) inp.focus();
+  } else if (act === 'cancel') {
+    document.getElementById('txnf-' + code).style.display = 'none';
+  } else if (act === 'save') {
+    var mode = currentSeg(code);
+    var inp = document.getElementById('txna-' + code);
+    var amt = parseFloat(inp ? inp.value : '0');
+    var dateEl = document.getElementById('txnd-' + code);
+    var date = dateEl ? dateEl.value : todayStr();
+    if (!amt || amt <= 0) { alert('请输入有效金额（¥）'); return; }
+    var o = loadTxns(); if (!o[code]) o[code] = [];
+    o[code].push({ t: mode, amt: Math.round(amt*100)/100, date: date, nav: (gNavByCode[code]||0), ts: Date.now() });
+    saveTxns(o);
+    document.getElementById('txnf-' + code).style.display = 'none';
+    doRenderFund(gLastEstimates); updateTxnBadge();
+  } else if (act === 'reset') {
+    if (!confirm('清空【' + code + '】的全部本地回填记录？')) return;
+    var o = loadTxns(); delete o[code]; saveTxns(o);
+    doRenderFund(gLastEstimates); updateTxnBadge();
+  }
+}
+function setSeg(form, mode) {
+  if (!form) return;
+  form.querySelectorAll('.txn-seg-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-mode') === mode); });
+  form.setAttribute('data-mode', mode);
+}
+function currentSeg(code) { var f = document.getElementById('txnf-' + code); return f ? (f.getAttribute('data-mode') || 'buy') : 'buy'; }
+function updateTxnBadge() {
+  var n = countTxns();
+  var el = document.getElementById('txnGlobalBadge');
+  if (el) el.textContent = n ? ('本地回填 ' + n + ' 笔') : '';
+}
+function exportTxns() {
+  var o = loadTxns(), n = countTxns();
+  if (!n) { alert('暂无本地回填记录。'); return; }
+  var lines = ['【基金回填交易记录】导出时间 ' + new Date().toLocaleString('zh-CN'),
+    '请把以下内容发给你的 AI，让它把交易固化进持仓并重新部署（所有设备 / 每日策略都会精确）：', ''];
+  for (var code in o) { (o[code]||[]).forEach(function(tx){ lines.push(code + ' | ' + (tx.t==='buy'?'补仓':'减仓') + ' | ¥' + tx.amt + ' | ' + tx.date + (tx.nav?(' | 净值¥'+tx.nav):'')); }); }
+  var txt = lines.join('\n'); copyFundText(txt);
+  alert('已复制 ' + n + ' 笔回填记录到剪贴板。\n\n粘贴给 AI 即可把交易固化进持仓。');
+}
+function copyFundText(t) {
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t); return; } } catch(e) {}
+  var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch(e) {} document.body.removeChild(ta);
+}
+
 function doRenderFund(estimates) {
   var funds = fundBaseData.map(function(f) { return Object.assign({}, f); });
+  applyTxns(funds);
+  gLastEstimates = estimates;
   var hasEstimate = false;
   if (estimates) {
     funds.forEach(function(f) {
@@ -3094,6 +3213,8 @@ function doRenderFund(estimates) {
       f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
     });
   }
+
+  funds.forEach(function(f) { gNavByCode[f.code] = f.nav; });
 
   // 汇总
   var totalCost = 0, totalValue = 0, winners = [], losers = [];
@@ -3255,6 +3376,22 @@ function doRenderFund(estimates) {
       '</div>'+
       '<div class="fund-advice-box '+adv.cls+'"><strong>'+adv.title+'</strong><br>'+adv.body+'</div>'+
       '<div class="fund-tip-bar">📱 '+adv.tip+'</div>'+
+      '<div class="fund-txn">'+
+        '<span class="txn-badge'+(f.txnCount?' has':'')+'">'+(f.txnCount?('已回填 '+f.txnCount+' 笔'):'未回填')+'</span>'+
+        '<button type="button" class="txn-btn" data-act="open" data-code="'+f.code+'" data-mode="buy">＋补仓</button>'+
+        '<button type="button" class="txn-btn" data-act="open" data-code="'+f.code+'" data-mode="sell">－减仓</button>'+
+        (f.txnCount?'<button type="button" class="txn-reset" data-act="reset" data-code="'+f.code+'">清空</button>':'')+
+      '</div>'+
+      '<div class="txn-form" id="txnf-'+f.code+'" style="display:none">'+
+        '<div class="txn-seg">'+
+          '<button type="button" class="txn-seg-btn" data-mode="buy" data-code="'+f.code+'">补仓</button>'+
+          '<button type="button" class="txn-seg-btn" data-mode="sell" data-code="'+f.code+'">减仓</button>'+
+        '</div>'+
+        '<input class="txn-amt" id="txna-'+f.code+'" type="number" inputmode="decimal" placeholder="金额 ¥" />'+
+        '<input class="txn-date" id="txnd-'+f.code+'" type="date" value="'+todayStr()+'" />'+
+        '<button type="button" class="txn-save" data-act="save" data-code="'+f.code+'">保存</button>'+
+        '<button type="button" class="txn-cancel" data-act="cancel" data-code="'+f.code+'">取消</button>'+
+      '</div>'+
     '</div>';
     grid.innerHTML += card;
   });
@@ -3325,6 +3462,8 @@ function doRenderFund(estimates) {
       tsEl.style.background = 'var(--input-bg)';
     }
   })();
+  initFundTxnUI();
+  updateTxnBadge();
 }
 </script>
 </body>
