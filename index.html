@@ -3149,26 +3149,38 @@ function doRenderFund(estimates) {
 
   function getAdvice(f, remainingBudget) {
     var absRet = Math.abs(f.ret), pctStr = (absRet*100).toFixed(1)+'%';
+    // 当日涨跌%（来自 14:30 盘中实时估值 / 收盘确认净值），让每日策略随行情变化
+    var t = (typeof f.estGszzl === 'number') ? f.estGszzl : 0;
+    var tNote = (t > 0 ? '今日 +' : '今日 ') + t.toFixed(2) + '%';
+
+    // 强势上涨日：只要盈利就建议部分止盈（此前微盈会被判为“持有”，现随当日行情变为减仓）
+    if (t >= 2.0 && f.ret >= 0) {
+      var amt = Math.min(roundMoney(f.cost*0.15), roundMoney(f.curValue*0.2));
+      if (amt < 500) amt = 500;
+      return {cls:'sell',action:'sell',amount:amt,actionLabel:'今日减仓',title:'✅ 当日走强 — 部分止盈',
+        body:'持有收益率 +'+pctStr+'，'+tNote+'。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>，落袋一小部分。',
+        tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()};
+    }
     if (f.ret >= 0.30) {
       var amt = Math.min(roundMoney(f.cost*0.4), roundMoney(f.curValue*0.4));
       if (amt < 500) amt = 500;
-      return {cls:'sell',action:'sell',amount:amt,actionLabel:'今日减仓',title:'🔔 大幅盈利 — 建议锁定利润',body:'持有收益率 +'+pctStr+'。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>（约 '+(amt/f.cost*100).toFixed(0)+'% 仓位），锁定部分利润。',tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()};
+      return {cls:'sell',action:'sell',amount:amt,actionLabel:'今日减仓',title:'🔔 大幅盈利 — 建议锁定利润',body:'持有收益率 +'+pctStr+'（'+tNote+'）。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>（约 '+(amt/f.cost*100).toFixed(0)+'% 仓位），锁定部分利润。',tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()};
     }
     if (f.ret >= 0.10) {
       var amt = Math.min(roundMoney(f.cost*0.15), roundMoney(f.curValue*0.2));
       if (amt < 500) amt = 500;
-      return {cls:'sell',action:'sell',amount:amt,actionLabel:'今日减仓',title:'✅ 稳健盈利 — 小幅减仓',body:'持有收益率 +'+pctStr+'。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>，落袋一小部分。',tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()};
+      return {cls:'sell',action:'sell',amount:amt,actionLabel:'今日减仓',title:'✅ 稳健盈利 — 小幅减仓',body:'持有收益率 +'+pctStr+'（'+tNote+'）。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>，落袋一小部分。',tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()};
     }
     if (f.ret >= 0.05) {
       var amt = roundMoney(f.cost*0.10);
       if (amt < 500) amt = 500;
-      return {cls:'sell',action:'sell',amount:amt,actionLabel:'今日减仓',title:'📌 小幅盈利 — 减仓锁利',body:'持有收益率 +'+pctStr+'。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>，保住这部分利润。',tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()};
+      return {cls:'sell',action:'sell',amount:amt,actionLabel:'今日减仓',title:'📌 小幅盈利 — 减仓锁利',body:'持有收益率 +'+pctStr+'（'+tNote+'）。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>，保住这部分利润。',tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()};
     }
-    if (f.ret >= 0) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'🔵 微盈/持平 — 持有观察',body:'持有收益率 +'+pctStr+'。今日<strong>不做任何操作</strong>。让利润再跑一段。',tip:'不需要操作。'};
+    if (f.ret >= 0) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'🔵 微盈/持平 — 持有观察',body:'持有收益率 +'+pctStr+'（'+tNote+'）。今日<strong>不做任何操作</strong>。让利润再跑一段。',tip:'不需要操作。'};
     // 亏损基金
-    if (f.score < 2) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'🟡 不建议补仓 — 基本面偏弱',body:'虽然浮亏 '+pctStr+'，但该基金<strong>质量评分偏低</strong>（经理年化仅 '+(f.mgrAnn||0).toFixed(1)+'%）。保守策略下<strong>不建议再往里投钱</strong>。',tip:'不做操作。等待反弹后考虑换仓。'};
-    if (f.ret >= -0.05) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'⚡ 接近回本 — 耐心等待',body:'浮亏仅 '+pctStr+'，距回本一步之遥。<strong>不需要补仓</strong>。',tip:'不需要操作。'};
-    // 计算补仓金额
+    if (f.score < 2) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'🟡 不建议补仓 — 基本面偏弱',body:'浮亏 '+pctStr+'（'+tNote+'），但该基金<strong>质量评分偏低</strong>（经理年化仅 '+(f.mgrAnn||0).toFixed(1)+'%）。保守策略下<strong>不建议再往里投钱</strong>。',tip:'不做操作。等待反弹后考虑换仓。'};
+    if (f.ret >= -0.05) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'⚡ 接近回本 — 耐心等待',body:'浮亏仅 '+pctStr+'（'+tNote+'），距回本一步之遥。<strong>不需要补仓</strong>。',tip:'不需要操作。'};
+    // 计算补仓金额（下跌日正是摊薄成本的好时机）
     var ratio = 0;
     if (f.ret >= -0.15) ratio = 0.08; else if (f.ret >= -0.25) ratio = 0.10; else if (f.ret >= -0.35) ratio = 0.12; else ratio = 0.10;
     var amt = roundMoney(f.cost * ratio);
@@ -3176,7 +3188,8 @@ function doRenderFund(estimates) {
     amt = Math.min(amt, MAX_PER_FUND, (remainingBudget||DAILY_CAP));
     var afterCostNav = (f.investedCost+amt)/(f.shares+amt/f.nav);
     var newRetPct = (Math.abs(f.nav-afterCostNav)/afterCostNav*100).toFixed(1);
-    return {cls:'buy',action:'buy',amount:amt,actionLabel:'今日补仓',title:(f.ret>=-0.15?'🔴 轻度浮亏 — 小额补仓':f.ret>=-0.30?'🔴🔴 中度浮亏 — 分批补仓':'🔴🔴🔴 深度浮亏 — 谨慎补仓'),body:'浮亏 '+pctStr+'，基金质量 <strong>'+f.scoreTag+'</strong>。今日补仓 <strong>¥'+amt.toLocaleString()+'</strong>（仅占仓位 '+(amt/f.cost*100).toFixed(0)+'%），补仓后成本 ¥'+f.costNav.toFixed(2)+'→<strong>¥'+afterCostNav.toFixed(2)+'</strong>。',tip:'操作：支付宝 → 基金 → 买入 → 输入 ¥'+amt.toLocaleString()};
+    var dip = (t <= -2.0) ? '（'+tNote+'，逢低摊薄）' : '';
+    return {cls:'buy',action:'buy',amount:amt,actionLabel:'今日补仓',title:(f.ret>=-0.15?'🔴 轻度浮亏 — 小额补仓':f.ret>=-0.30?'🔴🔴 中度浮亏 — 分批补仓':'🔴🔴🔴 深度浮亏 — 谨慎补仓'),body:'浮亏 '+pctStr+'，基金质量 <strong>'+f.scoreTag+'</strong>'+dip+'。今日补仓 <strong>¥'+amt.toLocaleString()+'</strong>（仅占仓位 '+(amt/f.cost*100).toFixed(0)+'%），补仓后成本 ¥'+f.costNav.toFixed(2)+'→<strong>¥'+afterCostNav.toFixed(2)+'</strong>。',tip:'操作：支付宝 → 基金 → 买入 → 输入 ¥'+amt.toLocaleString()};
   }
 
   // 生成建议
