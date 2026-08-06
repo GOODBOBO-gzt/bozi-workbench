@@ -3177,19 +3177,26 @@ function doRenderFund(estimates) {
       return {cls:'sell',action:'sell',amount:amt,actionLabel:'今日减仓',title:'📌 小幅盈利 — 减仓锁利',body:'持有收益率 +'+pctStr+'（'+tNote+'）。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>，保住这部分利润。',tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()};
     }
     if (f.ret >= 0) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'🔵 微盈/持平 — 持有观察',body:'持有收益率 +'+pctStr+'（'+tNote+'）。今日<strong>不做任何操作</strong>。让利润再跑一段。',tip:'不需要操作。'};
-    // 亏损基金
+    // ===== 亏损基金 · 保守·灵活策略 =====
+    // ① 质量太差 → 不补
     if (f.score < 2) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'🟡 不建议补仓 — 基本面偏弱',body:'浮亏 '+pctStr+'（'+tNote+'），但该基金<strong>质量评分偏低</strong>（经理年化仅 '+(f.mgrAnn||0).toFixed(1)+'%）。保守策略下<strong>不建议再往里投钱</strong>。',tip:'不做操作。等待反弹后考虑换仓。'};
+    // ② 接近回本（浮亏≤5%）→ 不补，等回本
     if (f.ret >= -0.05) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'⚡ 接近回本 — 耐心等待',body:'浮亏仅 '+pctStr+'（'+tNote+'），距回本一步之遥。<strong>不需要补仓</strong>。',tip:'不需要操作。'};
-    // 计算补仓金额（下跌日正是摊薄成本的好时机）
-    var ratio = 0;
-    if (f.ret >= -0.15) ratio = 0.08; else if (f.ret >= -0.25) ratio = 0.10; else if (f.ret >= -0.35) ratio = 0.12; else ratio = 0.10;
-    var amt = roundMoney(f.cost * ratio);
-    if (amt < 500) amt = 500;
+    // ③ 跌日才补：今日上涨/持平 → 绝不补仓（杜绝上涨日追高摊薄）
+    if (t >= 0) return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'🔵 持有观望 — 跌日才补',body:'浮亏 '+pctStr+'（'+tNote+'），但<strong>今日估值未下跌</strong>。保守策略<strong>不在上涨日摊薄成本</strong>，等待跌日再评估。',tip:'今日不操作。仅当基金当日下跌时才考虑补仓。'};
+    // ④ 到此处：亏损 + 优质 + 今日下跌 → 按"成本下方档位"触发补仓（纪律化，非每日机械买）
+    var tier, ratio;
+    if (f.ret >= -0.10) { tier='轻度'; ratio=0.05; }
+    else if (f.ret >= -0.20) { tier='中度'; ratio=0.07; }
+    else if (f.ret >= -0.30) { tier='深度'; ratio=0.09; }
+    else {
+      // ⑤ 封顶：累计浮亏已超 30% → 停止补仓，避免接飞刀
+      return {cls:'hold',action:'hold',amount:0,actionLabel:'今日不动',title:'🛑 停止补仓 — 已封顶',body:'累计浮亏 '+pctStr+'（'+tNote+'），已<strong>超过 30% 上限</strong>。保守策略<strong>停止摊薄</strong>，等待企稳后再评估。',tip:'不再补仓。保留现金，避免越跌越买。'};
+    }
+    var amt = Math.max(roundMoney(f.cost * ratio), 500);
     amt = Math.min(amt, MAX_PER_FUND, (remainingBudget||DAILY_CAP));
     var afterCostNav = (f.investedCost+amt)/(f.shares+amt/f.nav);
-    var newRetPct = (Math.abs(f.nav-afterCostNav)/afterCostNav*100).toFixed(1);
-    var dip = (t <= -2.0) ? '（'+tNote+'，逢低摊薄）' : '';
-    return {cls:'buy',action:'buy',amount:amt,actionLabel:'今日补仓',title:(f.ret>=-0.15?'🔴 轻度浮亏 — 小额补仓':f.ret>=-0.30?'🔴🔴 中度浮亏 — 分批补仓':'🔴🔴🔴 深度浮亏 — 谨慎补仓'),body:'浮亏 '+pctStr+'，基金质量 <strong>'+f.scoreTag+'</strong>'+dip+'。今日补仓 <strong>¥'+amt.toLocaleString()+'</strong>（仅占仓位 '+(amt/f.cost*100).toFixed(0)+'%），补仓后成本 ¥'+f.costNav.toFixed(2)+'→<strong>¥'+afterCostNav.toFixed(2)+'</strong>。',tip:'操作：支付宝 → 基金 → 买入 → 输入 ¥'+amt.toLocaleString()};
+    return {cls:'buy',action:'buy',amount:amt,actionLabel:'今日补仓',title:(tier==='轻度'?'🔴 轻度浮亏 — 档位补仓':tier==='中度'?'🔴🔴 中度浮亏 — 档位补仓':'🔴🔴🔴 深度浮亏 — 档位补仓'),body:'浮亏 '+pctStr+'，'+tNote+'，基金质量 <strong>'+f.scoreTag+'</strong>。触及<strong>'+tier+'档位</strong>（成本下 '+Math.abs(f.ret*100).toFixed(0)+'%），今日补仓 <strong>¥'+amt.toLocaleString()+'</strong>（占仓位 '+(amt/f.cost*100).toFixed(0)+'%），成本 ¥'+f.costNav.toFixed(2)+'→<strong>¥'+afterCostNav.toFixed(2)+'</strong>。',tip:'操作：支付宝 → 基金 → 买入 → 输入 ¥'+amt.toLocaleString()};
   }
 
   // 生成建议
@@ -3280,7 +3287,7 @@ function doRenderFund(estimates) {
      netFlow < 0 ? '<span>净回笼 <span style="color:var(--success);font-weight:900;font-size:16px">¥'+Math.abs(netFlow).toLocaleString()+'</span></span>' :
      '<span style="color:var(--text-muted)">资金平衡</span>')+
     '</div>'+
-    '<div style="margin-top:6px;font-size:11px;color:var(--text-muted)">📋 保守策略：① 只补优质基金（评分≥2）② 单日 ≤¥'+DAILY_CAP.toLocaleString()+' ③ 单只 ≤¥'+MAX_PER_FUND.toLocaleString()+' ④ 卖出盈利补亏损 ⑤ 烂基金不补</div>';
+    '<div style="margin-top:6px;font-size:11px;color:var(--text-muted)">📋 保守策略：① 只补优质基金（评分≥2）② 跌日才补·涨日绝不补 ③ 成本档位触发（−10/−20/−30%）④ 浮亏超 30% 封顶停补 ⑤ 单日 ≤¥'+DAILY_CAP.toLocaleString()+' · 单只 ≤¥'+MAX_PER_FUND.toLocaleString()+'</div>';
 
   // 交易时段感知
   (function() {
