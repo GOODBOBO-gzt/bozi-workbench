@@ -3047,6 +3047,8 @@ function startFundAutoTracking() {
 
 // 读取每日自动生成的 fund-live.json（与 GitHub Pages 同源，带时间戳防缓存）
 function fetchFundLive(callback) {
+  // 离线快照：若已内联数据则直接用，不发任何网络请求
+  if (window.__FUND_LIVE_OVERRIDE__) { callback(window.__FUND_LIVE_OVERRIDE__); return; }
   var url = 'fund-live.json?t=' + Date.now();
   fetch(url, { cache: 'no-store' }).then(function(r) {
     if (!r.ok) throw new Error('http ' + r.status);
