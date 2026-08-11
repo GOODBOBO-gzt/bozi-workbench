@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基金组合每日追踪 · 回本作战</title>
+<style>
+  :root {
+    --red: #e8394a; --red-bg: #fef0f0; --red-light: #fff5f5;
+    --green: #1ca01c; --green-bg: #f0faf0; --green-light: #f5fff5;
+    --bg: #f5f6f8; --card: #fff; --text: #1a1a2e; --text2: #6b7280;
+    --border: #e5e7eb; --accent: #4f46e5; --accent-bg: #eef2ff;
+    --radius: 14px; --shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 16px 16px 40px; }
+
+  .header { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 24px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 18px; font-weight: 700; }
+  .header .sub { font-size: 12px; color: var(--text2); }
+  .header-right { text-align: right; }
+  .header-right .total { font-size: 24px; font-weight: 800; }
+  .header-right .pnl { font-size: 14px; font-weight: 600; margin-top: 2px; }
+
+  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 700px) { .summary-row { grid-template-columns: repeat(2, 1fr); } }
+  .sum-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
+  .sum-card .lbl { font-size: 11px; color: var(--text2); }
+  .sum-card .val { font-size: 20px; font-weight: 700; margin: 2px 0; }
+  .sum-card .sub { font-size: 11px; color: var(--text2); }
+
+  .section { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 14px; }
+  .section h2 { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+
+  /* Fund grid */
+  .fund-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  @media (max-width: 700px) { .fund-grid { grid-template-columns: 1fr; } }
+
+  .fund-card { border-radius: 12px; border: 1px solid var(--border); overflow: hidden; background: var(--card); }
+  .fund-card.profit { border-left: 4px solid var(--red); }
+  .fund-card.loss { border-left: 4px solid var(--green); }
+  .fund-card.deep-loss { border-left: 4px solid #991b1b; }
+
+  .fc-top { padding: 14px 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .fc-name { font-size: 14px; font-weight: 700; line-height: 1.3; }
+  .fc-code { font-size: 11px; color: var(--text2); }
+  .fc-return { font-size: 20px; font-weight: 800; text-align: right; }
+  .fc-return.up { color: var(--red); }
+  .fc-return.down { color: var(--green); }
+
+  .fc-stats { padding: 0 16px 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: 12px; }
+  .fc-stats .st { display: flex; justify-content: space-between; }
+  .fc-stats .st .kl { color: var(--text2); }
+  .fc-stats .st .kv { font-weight: 600; }
+
+  .fc-stats-full { padding: 0 16px 10px; font-size: 12px; }
+  .fc-stats-full .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .fc-stats-full .row .kl { color: var(--text2); }
+  .fc-stats-full .row .kv { font-weight: 600; }
+
+  .fc-advice { margin: 0 12px 12px; padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.6; }
+  .fc-advice.buy { background: var(--red-bg); color: #991b1b; }
+  .fc-advice.hold { background: var(--accent-bg); color: #3730a3; }
+  .fc-advice.sell { background: var(--green-bg); color: #15803d; }
+  .fc-advice.warn { background: #fffbeb; color: #92400e; }
+
+  .fc-bar { margin: 0 16px 10px; }
+  .fc-bar .bar-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text2); margin-bottom: 3px; }
+  .fc-bar .bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .fc-bar .bar-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-right: 3px; }
+  .tag-green { background: var(--green-bg); color: var(--green); }
+  .tag-red { background: var(--red-bg); color: var(--red); }
+  .tag-blue { background: var(--accent-bg); color: var(--accent); }
+  .tag-yellow { background: #fffbeb; color: #b45309; }
+
+  /* action summary */
+  .action-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+  @media (max-width: 600px) { .action-summary { grid-template-columns: 1fr; } }
+  .action-group { padding: 12px; border-radius: 10px; }
+  .action-group h4 { font-size: 13px; margin-bottom: 6px; }
+  .action-group ul { list-style: none; font-size: 12px; }
+  .action-group li { padding: 2px 0; }
+
+  .footer { text-align: center; font-size: 11px; color: var(--text2); padding: 16px 0 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <div>
+    <h1>基金组合每日追踪</h1>
+    <div class="sub">8只基金 · 总成本 ¥91,360 · 数据截止 2026-08-11（盘中估值） · <span id="lastUpdateTime" style="font-weight:600">更新于 08-11 14:42</span></div>
+    <div id="tradeStatus" style="margin-top:6px;padding:4px 10px;border-radius:6px;font-size:12px;display:inline-block"></div>
+  </div>
+  <div class="header-right">
+    <div class="total" id="totalValue">¥67,559</div>
+    <div class="pnl down" id="totalPnl">总浮亏 -¥23,801（-26.05%）</div>
+  </div>
+</div>
+
+<!-- Trading time banner -->
+<div id="timeBanner" style="margin-bottom:14px;padding:10px 16px;border-radius:10px;font-size:13px;display:none"></div>
+
+<div class="summary-row">
+  <div class="sum-card">
+    <div class="lbl">盈利基金</div>
+    <div class="val up" id="winCount">3只</div>
+    <div class="sub" id="winDetail"></div>
+  </div>
+  <div class="sum-card">
+    <div class="lbl">亏损基金</div>
+    <div class="val down" id="loseCount">5只</div>
+    <div class="sub" id="loseDetail"></div>
+  </div>
+  <div class="sum-card">
+    <div class="lbl">最大亏损</div>
+    <div class="val down" id="maxLoss"></div>
+    <div class="sub" id="maxLossName"></div>
+  </div>
+  <div class="sum-card">
+    <div class="lbl">最佳表现</div>
+    <div class="val up" id="bestPerf"></div>
+    <div class="sub" id="bestPerfName"></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>📋 全部持仓</h2>
+  <div class="fund-grid" id="fundGrid"></div>
+</div>
+
+<div class="section">
+  <h2>🎯 今日操作汇总</h2>
+  <div class="action-summary" id="actionSummary"></div>
+  <div style="margin-top:14px;padding:10px 14px;background:#f9fafb;border-radius:8px;font-size:12px;color:var(--text2)">
+    💡 <strong>说明：</strong>以上建议基于 2026-08-11 盘中估值数据（收盘前估算净值，当日确认净值预计当晚更新）。所有基金在盈米平台均显示暂停申购，但实际在支付宝等第三方平台可能仍可买入。请在操作前确认支付宝的可申购状态。基金有风险，投资需谨慎，以上不构成投资建议。
+  </div>
+</div>
+
+<div class="footer">数据来源：新浪财经盘中估值 + 东方财富历史净值 · 仅供参考 · <span id="footerUpdate">更新于 2026-08-11 14:42</span></div>
+</div>
+
+<!-- ===== 交易时段感知 ===== -->
+<script>
+(function() {
+  var now = new Date();
+  var hour = now.getHours();
+  var min = now.getMinutes();
+  var day = now.getDay(); // 0=Sun, 6=Sat
+  var totalMin = hour * 60 + min;
+
+  var isWeekday = day >= 1 && day <= 5;
+  var isBeforeOpen = totalMin < 9 * 60 + 30;       // before 9:30
+  var isTrading = totalMin >= 9 * 60 + 30 && totalMin < 15 * 60; // 9:30-15:00
+  var isCloseWindow = totalMin >= 14 * 60 + 30 && totalMin < 14 * 60 + 55; // 14:30-14:55
+  var isAfterClose = totalMin >= 15 * 60 && totalMin < 15 * 60 + 5; // 15:00-15:05
+
+  var tsEl = document.getElementById('tradeStatus');
+  var bannerEl = document.getElementById('timeBanner');
+
+  if (!isWeekday) {
+    tsEl.innerHTML = '<span style="color:#6b7280">📅 今日非交易日，无操作建议</span>';
+    tsEl.style.background = '#f9fafb';
+    bannerEl.style.display = 'block';
+    bannerEl.style.background = '#f9fafb';
+    bannerEl.style.color = '#6b7280';
+    bannerEl.innerHTML = '📅 <strong>今天是周末或节假日</strong>，基金净值不更新。请在下一个交易日 14:30-14:55 前来查看，届时数据会每日自动刷新。';
+  } else if (isCloseWindow) {
+    tsEl.innerHTML = '<span style="color:#1ca01c">🟢 <strong>最佳操作窗口！</strong>距收盘剩 '+(15*60 - totalMin)+' 分钟，立即操作可当日成交</span>';
+    tsEl.style.background = '#f0faf0';
+    bannerEl.style.display = 'block';
+    bannerEl.style.background = '#f0faf0';
+    bannerEl.style.color = '#15803d';
+    bannerEl.innerHTML = '⏰ <strong>现在是 14:30-14:55，最佳操作窗口！</strong>在 3 点前买入/卖出，均按今日收盘净值成交。3 点后操作就顺延到明天了。';
+  } else if (isTrading && !isCloseWindow) {
+    tsEl.innerHTML = '<span style="color:#b45309">🟡 <strong>交易时段</strong> · 建议 14:30 后再来操作（净值更明朗）</span>';
+    tsEl.style.background = '#fffbeb';
+    bannerEl.style.display = 'block';
+    bannerEl.style.background = '#fffbeb';
+    bannerEl.style.color = '#92400e';
+    bannerEl.innerHTML = '⚡ <strong>现在净值尚未确定</strong>，建议在 14:30-14:55 再操作。每日 14:45 系统会自动更新最新数据。当前建议基于上次收盘数据，仅供参考。';
+  } else if (isBeforeOpen) {
+    tsEl.innerHTML = '<span style="color:#6b7280">☀️ 盘前 · 等待 9:30 开盘</span>';
+    tsEl.style.background = '#f3f4f6';
+  } else if (isAfterClose) {
+    tsEl.innerHTML = '<span style="color:#4f46e5">🔵 已收盘 · 当日交易结束，建议基于今日数据明日操作</span>';
+    tsEl.style.background = '#eef2ff';
+  } else {
+    tsEl.innerHTML = '<span style="color:#6b7280">🌙 盘后 · 明日 9:30 开盘</span>';
+    tsEl.style.background = '#f3f4f6';
+  }
+
+  // Time to next update
+  var lastUpdate = new Date('2026-08-11T14:42:00');
+  document.getElementById('lastUpdateTime').textContent = '更新于 ' +
+    ('0'+lastUpdate.getMonth()).slice(-2) + '-' + ('0'+lastUpdate.getDate()).slice(-2) + ' ' +
+    ('0'+lastUpdate.getHours()).slice(-2) + ':' + ('0'+lastUpdate.getMinutes()).slice(-2);
+})();
+</script>
+
+<script>
+// ===== FUND DATA (+ quality score for conservative filtering) =====
+// qualityScore: mgrAnn>=20→+3,>=15→+2,>=10→+1; yr1>=50%→+2,>0→+1; yr1<0→-1; stock<=92%→+1
+var funds = [
+  {code:"001438",name:"易方达瑞享混合E",cost:11051,ret:-0.0545,nav:9.0122,mgr:"武阳",mgrAnn:25.63,risk:"中高风险",type:"混合-灵活",yr1:1.1894,yr1txt:"+118.9%",ytd:0.6304,ytdtxt:"+63.0%",m1:-0.1570,m1txt:"-15.7%",vol:0.5556,maxdd:-0.4026,stock:0.944,topInd:"制造业83%",canBuy:true,score:5,scoreTag:"优质"},
+  {code:"001753",name:"红土创新新兴产业混合A",cost:4009,ret:-0.2400,nav:4.2514,mgr:"廖星昊",mgrAnn:28.46,risk:"中风险",type:"混合-灵活",yr1:1.5126,yr1txt:"+151.3%",ytd:0.5544,ytdtxt:"+55.4%",m1:-0.1995,m1txt:"-20.0%",vol:0.45,maxdd:-0.35,stock:0.916,topInd:"制造业82%",canBuy:true,score:6,scoreTag:"优质"},
+  {code:"008327",name:"东财中证通信C",cost:8761,ret:-0.2525,nav:4.2044,mgr:"姚楠燕",mgrAnn:80.34,risk:"中风险",type:"股票-指数",yr1:1.5214,yr1txt:"+152.1%",ytd:0.5333,ytdtxt:"+53.3%",m1:-0.1592,m1txt:"-15.9%",vol:0.40,maxdd:-0.35,stock:0.953,topInd:"制造业94%",canBuy:true,score:5,scoreTag:"优质"},
+  {code:"001216",name:"易方达新收益混合A",cost:7345,ret:0.0980,nav:4.1496,mgr:"张清华",mgrAnn:17.22,risk:"中风险",type:"混合-灵活",yr1:0.4455,yr1txt:"+44.5%",ytd:0.2993,ytdtxt:"+29.9%",m1:-0.1779,m1txt:"-17.8%",vol:0.30,maxdd:-0.25,stock:0.948,topInd:"制造业75%",canBuy:true,score:5,scoreTag:"优质"},
+  {code:"570001",name:"诺德价值优势混合",cost:6845,ret:0.1109,nav:3.3119,mgr:"罗世锋",mgrAnn:13.20,risk:"中高风险",type:"混合-偏股",yr1:0.4493,yr1txt:"+44.9%",ytd:0.1323,ytdtxt:"+13.2%",m1:-0.0192,m1txt:"-1.9%",vol:0.30,maxdd:-0.28,stock:0.934,topInd:"制造业77%",canBuy:true,score:4,scoreTag:"良好"},
+  {code:"161725",name:"招商中证白酒指数A",cost:3101,ret:-0.4695,nav:0.5724,mgr:"侯昊",mgrAnn:5.71,risk:"中高风险",type:"股票-指数",yr1:-0.2576,yr1txt:"-25.8%",ytd:-0.1937,ytdtxt:"-19.4%",m1:0.1156,m1txt:"+11.6%",vol:0.27,maxdd:-0.33,stock:0.948,topInd:"白酒94%",canBuy:true,score:0,scoreTag:"观望"},
+  {code:"000294",name:"华安生态优先混合A",cost:30733,ret:-0.3351,nav:2.8806,mgr:"陈媛",mgrAnn:5.77,risk:"中高风险",type:"混合-偏股",yr1:0.0995,yr1txt:"+10.0%",ytd:0.0362,ytdtxt:"+3.6%",m1:-0.1904,m1txt:"-19.0%",vol:0.357,maxdd:-0.347,stock:0.893,topInd:"制造业83%",canBuy:true,score:1,scoreTag:"观望"},
+  {code:"162605",name:"景顺长城鼎益混合(LOF)A",cost:19515,ret:-0.3883,nav:1.6265,mgr:"刘彦春",mgrAnn:6.75,risk:"中高风险",type:"混合-偏股",yr1:-0.1156,yr1txt:"-11.6%",ytd:-0.0873,ytdtxt:"-8.7%",m1:-0.1251,m1txt:"-12.5%",vol:0.276,maxdd:-0.297,stock:0.918,topInd:"制造业83%",canBuy:true,score:0,scoreTag:"观望"}
+];
+
+// ===== Compute derived values =====
+funds.forEach(function(f) {
+  f.costNav = f.nav / (1 + f.ret);
+  f.shares = Math.round(f.cost / f.costNav);
+  f.curValue = f.shares * f.nav;
+  f.pnl = f.curValue - f.cost;
+  f.pnlPct = f.ret;
+  f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
+});
+
+// ===== Summary =====
+var totalCost = 0, totalValue = 0;
+var winners = [], losers = [];
+funds.forEach(function(f) {
+  totalCost += f.cost;
+  totalValue += f.curValue;
+  if (f.ret >= 0) winners.push(f); else losers.push(f);
+});
+var totalPnl = totalValue - totalCost;
+var totalRet = totalPnl / totalCost;
+
+document.getElementById('totalValue').textContent = '¥' + totalValue.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+document.getElementById('totalPnl').textContent = '总浮亏 -¥' + Math.abs(totalPnl).toLocaleString('zh-CN', {maximumFractionDigits: 0}) + '（' + (totalRet*100).toFixed(2) + '%）';
+document.getElementById('totalPnl').className = 'pnl ' + (totalRet >= 0 ? 'up' : 'down');
+
+document.getElementById('winCount').textContent = winners.length + '只';
+document.getElementById('winDetail').textContent = winners.length > 0 ? '「'+winners.map(function(f){return f.code;}).join(' / ')+'」': '无';
+
+document.getElementById('loseCount').textContent = losers.length + '只';
+document.getElementById('loseDetail').textContent = losers.length > 0 ? '「'+losers.map(function(f){return f.code;}).join(' / ')+'」': '无';
+
+losers.sort(function(a,b){return a.ret - b.ret;});
+winners.sort(function(a,b){return b.ret - a.ret;});
+
+document.getElementById('maxLoss').textContent = losers.length > 0 ? (losers[0].ret*100).toFixed(2)+'%' : '—';
+document.getElementById('maxLossName').textContent = losers.length > 0 ? losers[0].code + ' ' + losers[0].name : '';
+document.getElementById('maxLoss').className = 'val down';
+
+document.getElementById('bestPerf').textContent = winners.length > 0 ? '+'+(winners[0].ret*100).toFixed(2)+'%' : '—';
+document.getElementById('bestPerfName').textContent = winners.length > 0 ? winners[0].code + ' ' + winners[0].name : '';
+document.getElementById('bestPerf').className = 'val up';
+
+// ===== CONSERVATIVE STRATEGY =====
+var DAILY_CAP = 5000; // 每日最多新增投入资金
+var MIN_BUY = 500;    // 最小补仓金额
+var MAX_PER_FUND = 2000; // 单只基金单日最多补仓
+
+function roundMoney(n) {
+  if (n < 500) return 0; // too small, skip
+  if (n <= 500) return 500;
+  return Math.round(n / 500) * 500;
+}
+
+// ===== Generate fund cards (conservative, with exact amounts) =====
+function getAdvice(f, remainingBudget) {
+  var absRet = Math.abs(f.ret);
+  var pctStr = (absRet * 100).toFixed(1) + '%';
+
+  // --- SELL: only for clear profits ---
+  if (f.ret >= 0.30) {
+    var amt = Math.min(roundMoney(f.cost * 0.4), roundMoney(f.curValue * 0.4));
+    if (amt < 500) amt = 500;
+    return {
+      cls:'sell', action:'sell', amount:amt, actionLabel:'今日减仓',
+      title:'🔔 大幅盈利 — 建议锁定利润',
+      body:'持有收益率 +'+pctStr+'。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>（约 '+(amt/f.cost*100).toFixed(0)+'% 仓位），锁定部分利润。卖出的钱可用于补其他优质基金的仓。',
+      tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()
+    };
+  }
+  if (f.ret >= 0.10) {
+    var amt = Math.min(roundMoney(f.cost * 0.15), roundMoney(f.curValue * 0.2));
+    if (amt < 500) amt = 500;
+    return {
+      cls:'sell', action:'sell', amount:amt, actionLabel:'今日减仓',
+      title:'✅ 稳健盈利 — 建议小幅减仓',
+      body:'持有收益率 +'+pctStr+'。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>，落袋一小部分。剩余仓位继续持有，涨到 +20% 以上再减一批。',
+      tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()
+    };
+  }
+  if (f.ret >= 0.05) {
+    // In conservative mode, small profits → sell a little to fund losers
+    var amt = roundMoney(f.cost * 0.10);
+    if (amt < 500) amt = 500;
+    return {
+      cls:'sell', action:'sell', amount:amt, actionLabel:'今日减仓',
+      title:'📌 小幅盈利 — 减仓锁利',
+      body:'持有收益率 +'+pctStr+'。今日卖出 <strong>¥'+amt.toLocaleString()+'</strong>，先保住这部分利润。如果后面涨了不后悔（还有大部分仓位），跌了也有现金在手。',
+      tip:'操作：支付宝 → 基金 → 卖出 → 输入 ¥'+amt.toLocaleString()
+    };
+  }
+  if (f.ret >= 0) {
+    return {
+      cls:'hold', action:'hold', amount:0, actionLabel:'今日不动',
+      title:'🔵 微盈/持平 — 持有观察',
+      body:'持有收益率 +'+pctStr+'。今日<strong>不做任何操作</strong>。利润太小不值得卖，也没有加仓的必要。让它自己走一段再说。',
+      tip:'不需要操作。'
+    };
+  }
+
+  // --- BUY: only for quality funds ---
+  // Conservative rule: score < 2 → don't add new money
+  if (f.score < 2) {
+    return {
+      cls:'hold', action:'hold', amount:0, actionLabel:'今日不动',
+      title:'🟡 不建议补仓 — 基本面偏弱',
+      body:'虽然浮亏 '+pctStr+'，但该基金<strong>质量评分偏低</strong>（经理任职年化仅 '+(f.mgrAnn||0).toFixed(1)+'%，近1年收益 '+(f.yr1>=0?'+':'')+(f.yr1*100).toFixed(1)+'%）。保守策略下<strong>不建议再往里投钱</strong>。持有等待反弹，反弹后逐步减仓换到更优质的基金上。',
+      tip:'不做操作。等待反弹后考虑换仓。'
+    };
+  }
+
+  // --- Quality funds: BUY (conservative amounts) ---
+  var budgetLeft = remainingBudget || DAILY_CAP;
+
+  if (f.ret >= -0.05) {
+    return {
+      cls:'hold', action:'hold', amount:0, actionLabel:'今日不动',
+      title:'⚡ 接近回本 — 耐心等待',
+      body:'浮亏仅 '+pctStr+'，距回本一步之遥。<strong>不需要补仓</strong>——补仓反而可能增加风险。耐心等它自己回到水上。',
+      tip:'不需要操作。回本近在眼前，保持耐心。'
+    };
+  }
+
+  // Calculate conservative buy amount
+  var ratio = 0;
+  if (f.ret >= -0.15) ratio = 0.08;   // mild loss: 8%
+  else if (f.ret >= -0.25) ratio = 0.10; // moderate: 10%
+  else if (f.ret >= -0.35) ratio = 0.12; // deep: 12%
+  else ratio = 0.10;                      // extreme: be extra careful, 10%
+
+  var amt = roundMoney(f.cost * ratio);
+  if (amt < MIN_BUY) amt = MIN_BUY;
+  amt = Math.min(amt, MAX_PER_FUND, budgetLeft);
+
+  var afterCostNav = (f.cost + amt) / (f.shares + amt / f.nav);
+  var newRet = (f.nav - afterCostNav) / afterCostNav * 100;
+
+  return {
+    cls:'buy', action:'buy', amount:amt, actionLabel:'今日补仓',
+    title:(f.ret >= -0.15 ? '🔴 轻度浮亏 — 小额补仓' : f.ret >= -0.30 ? '🔴🔴 中度浮亏 — 分批补仓' : '🔴🔴🔴 深度浮亏 — 谨慎补仓'),
+    body:'浮亏 '+pctStr+'，基金质量 <strong>'+f.scoreTag+'</strong>。今日补仓 <strong>¥'+amt.toLocaleString()+'</strong>（仅占仓位 '+(amt/f.cost*100).toFixed(0)+'%），补仓后成本从 ¥'+f.costNav.toFixed(2)+' 降至 <strong>¥'+afterCostNav.toFixed(2)+'</strong>。保守策略下单日不超过 ¥'+MAX_PER_FUND.toLocaleString()+'，分多天慢慢来。',
+    tip:'操作：支付宝 → 基金 → 买入 → 输入 ¥'+amt.toLocaleString()+' → 确认。小步慢走。'
+  };
+}
+
+// ===== Sort funds: sell first, then buy by quality desc, then hold =====
+var fundAdvices = [];
+var remainingBudget = DAILY_CAP;
+
+// First pass: generate advice for all funds, track budget
+funds.forEach(function(f) {
+  var adv = getAdvice(f, remainingBudget);
+  if (adv.action === 'buy') {
+    remainingBudget -= adv.amount;
+  }
+  fundAdvices.push({fund: f, advice: adv});
+});
+
+// Second pass: if multiple buys exceeded budget, re-allocate by priority (quality score)
+if (remainingBudget < 0) {
+  var buyItems = fundAdvices.filter(function(a){return a.advice.action === 'buy';});
+  buyItems.sort(function(a,b){return b.fund.score - a.fund.score;}); // highest quality first
+  var budget = DAILY_CAP;
+  buyItems.forEach(function(item) {
+    var newAdv = getAdvice(item.fund, budget);
+    item.advice = newAdv;
+    if (newAdv.action === 'buy') budget -= newAdv.amount;
+  });
+}
+
+var grid = document.getElementById('fundGrid');
+fundAdvices.forEach(function(item) {
+  var f = item.fund;
+  var adv = item.advice;
+  var cardCls = f.ret >= 0 ? 'profit' : (adv.action === 'hold' ? 'loss' : 'deep-loss');
+  var retCls = f.ret >= 0 ? 'up' : 'down';
+  var retSign = f.ret >= 0 ? '+' : '';
+  var pnlSign = f.pnl >= 0 ? '+' : '';
+
+  var barPct = Math.max(0, Math.min(100, (f.nav / f.costNav) * 100));
+  var barColor = f.ret >= 0 ? 'var(--red)' : 'var(--accent)';
+
+  // Action badge
+  var actionBadge = '';
+  if (adv.action === 'buy') {
+    actionBadge = '<div style="margin-top:8px;padding:8px 12px;background:#fff5f5;border-radius:8px;border:1px dashed #e8394a;text-align:center"><span style="font-size:11px;color:#991b1b">'+adv.actionLabel+'</span><br><span style="font-size:20px;font-weight:900;color:#e8394a">¥'+adv.amount.toLocaleString()+'</span></div>';
+  } else if (adv.action === 'sell') {
+    actionBadge = '<div style="margin-top:8px;padding:8px 12px;background:#f0faf0;border-radius:8px;border:1px dashed #1ca01c;text-align:center"><span style="font-size:11px;color:#15803d">'+adv.actionLabel+'</span><br><span style="font-size:20px;font-weight:900;color:#1ca01c">¥'+adv.amount.toLocaleString()+'</span></div>';
+  } else {
+    actionBadge = '<div style="margin-top:8px;padding:8px 12px;background:#f9fafb;border-radius:8px;border:1px dashed #d1d5db;text-align:center"><span style="font-size:11px;color:#6b7280">'+adv.actionLabel+'</span><br><span style="font-size:16px;font-weight:700;color:#6b7280">暂不操作</span></div>';
+  }
+
+  // Quality badge
+  var scoreColor = f.score >= 4 ? '#4f46e5' : (f.score >= 2 ? '#b45309' : '#6b7280');
+  var scoreBg = f.score >= 4 ? 'var(--accent-bg)' : (f.score >= 2 ? '#fffbeb' : '#f9fafb');
+
+  var card = '<div class="fund-card '+cardCls+'">'+
+    '<div class="fc-top">'+
+      '<div><div class="fc-name">'+f.name+' <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:'+scoreBg+';color:'+scoreColor+'">'+f.scoreTag+'</span></div><div class="fc-code">'+f.code+' · '+f.type+' · <span class="tag '+(f.risk.indexOf('高')>=0?'tag-red':'tag-yellow')+'">'+f.risk+'</span></div></div>'+
+      '<div class="fc-return '+retCls+'">'+retSign+(f.ret*100).toFixed(2)+'%</div>'+
+    '</div>'+
+    actionBadge +
+    '<div class="fc-stats">'+
+      '<div class="st"><span class="kl">成本</span><span class="kv">¥'+f.cost.toLocaleString()+'</span></div>'+
+      '<div class="st"><span class="kl">市值</span><span class="kv">¥'+f.curValue.toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
+      '<div class="st"><span class="kl">净值</span><span class="kv">¥'+f.nav.toFixed(4)+'</span></div>'+
+      '<div class="st"><span class="kl">成本净值</span><span class="kv">¥'+f.costNav.toFixed(4)+'</span></div>'+
+      '<div class="st"><span class="kl">持仓盈亏</span><span class="kv '+(f.pnl>=0?'up':'down')+'">'+pnlSign+'¥'+Math.abs(f.pnl).toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
+      '<div class="st"><span class="kl">距回本需涨</span><span class="kv up">'+(f.ret>=0?'已盈利':'+'+((f.needGain)*100).toFixed(2)+'%')+'</span></div>'+
+    '</div>'+
+    '<div class="fc-bar">'+
+      '<div class="bar-labels"><span>净值 ¥'+f.nav.toFixed(2)+'</span><span>成本 ¥'+f.costNav.toFixed(2)+'</span></div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+barPct+'%;background:'+barColor+'"></div></div>'+
+    '</div>'+
+    '<div class="fc-stats-full">'+
+      '<div class="row"><span class="kl">近1月</span><span class="kv '+(f.m1>=0?'up':'down')+'">'+f.m1txt+'</span></div>'+
+      '<div class="row"><span class="kl">近1年</span><span class="kv '+(f.yr1>=0?'up':'down')+'">'+f.yr1txt+'</span></div>'+
+      '<div class="row"><span class="kl">今年以来</span><span class="kv '+(f.ytd>=0?'up':'down')+'">'+f.ytdtxt+'</span></div>'+
+      '<div class="row"><span class="kl">基金经理</span><span class="kv">'+f.mgr+'（年化 '+f.mgrAnn.toFixed(1)+'%）</span></div>'+
+      '<div class="row"><span class="kl">仓位/行业</span><span class="kv">'+(f.stock*100).toFixed(0)+'%股票 · '+f.topInd+'</span></div>'+
+    '</div>'+
+    '<div class="fc-advice '+adv.cls+'"><strong>'+adv.title+'</strong><br>'+adv.body+'</div>'+
+    '<div style="margin:0 12px 12px;font-size:11px;color:var(--text2);padding:6px 10px;background:#f9fafb;border-radius:6px">📱 '+adv.tip+'</div>'+
+    '</div>';
+  grid.innerHTML += card;
+});
+
+// ===== Action Summary (use pre-computed fundAdvices) =====
+var sellList = [], holdList = [], buyList = [];
+var totalSell = 0, totalBuy = 0;
+
+fundAdvices.forEach(function(item) {
+  var f = item.fund;
+  var adv = item.advice;
+  var retTxt = (f.ret>=0?'+':'')+(f.ret*100).toFixed(1)+'%';
+  var itemHtml = '<strong>'+f.code+'</strong> '+f.name.split(' ')[0]+'：'+adv.actionLabel;
+  if (adv.amount > 0) itemHtml += ' <strong style="font-size:13px">¥'+adv.amount.toLocaleString()+'</strong>';
+  itemHtml += '（'+retTxt+'，'+f.scoreTag+'）';
+
+  if (adv.action === 'sell') { sellList.push('<li>'+itemHtml+'</li>'); totalSell += adv.amount; }
+  else if (adv.action === 'buy') { buyList.push('<li>'+itemHtml+'</li>'); totalBuy += adv.amount; }
+  else { holdList.push('<li>'+itemHtml+'</li>'); }
+});
+
+var summaryHtml = '';
+
+// Sell section
+if (sellList.length > 0) {
+  summaryHtml += '<div class="action-group" style="background:var(--green-bg)"><h4 style="color:var(--green)">🟢 今日减仓（回笼 ¥'+totalSell.toLocaleString()+'）</h4><ul>'+sellList.join('')+'</ul></div>';
+} else {
+  summaryHtml += '<div class="action-group" style="background:#f9fafb"><h4 style="color:var(--text2)">🟢 今日减仓</h4><p style="font-size:12px;color:var(--text2)">无</p></div>';
+}
+
+// Buy section
+if (buyList.length > 0) {
+  summaryHtml += '<div class="action-group" style="background:var(--red-bg)"><h4 style="color:var(--red)">🔴 今日补仓（投入 ¥'+totalBuy.toLocaleString()+'）</h4><ul>'+buyList.join('')+'</ul></div>';
+} else {
+  summaryHtml += '<div class="action-group" style="background:#f9fafb"><h4 style="color:var(--text2)">🔴 今日补仓</h4><p style="font-size:12px;color:var(--text2)">无</p></div>';
+}
+
+// Hold section
+if (holdList.length > 0) {
+  summaryHtml += '<div class="action-group" style="background:var(--accent-bg)"><h4 style="color:var(--accent)">🔵 今日不动</h4><ul>'+holdList.join('')+'</ul></div>';
+} else {
+  summaryHtml += '<div class="action-group" style="background:#f9fafb"><h4 style="color:var(--text2)">🔵 今日不动</h4><p style="font-size:12px;color:var(--text2)">无</p></div>';
+}
+
+// Daily total
+var netFlow = totalBuy - totalSell;
+summaryHtml += '<div style="margin-top:10px;padding:12px 16px;background:linear-gradient(135deg,#fefce8 0%,#f0fdf4 100%);border-radius:8px;border:1px solid #fde047;font-size:13px">'+
+  '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
+    '<span>💰 <strong>今日资金总览（保守策略 · 每日上限 ¥'+DAILY_CAP.toLocaleString()+'）</strong></span>'+
+    (netFlow > 0 ? '<span>净需投入 <span style="color:#e8394a;font-weight:900;font-size:16px">¥'+netFlow.toLocaleString()+'</span></span>' :
+     netFlow < 0 ? '<span>净回笼 <span style="color:#1ca01c;font-weight:900;font-size:16px">¥'+Math.abs(netFlow).toLocaleString()+'</span></span>' :
+     '<span style="color:#6b7280">资金平衡，无需额外投入</span>')+
+  '</div>'+
+  '<div style="margin-top:6px;font-size:11px;color:var(--text2)">'+
+    '📋 保守策略原则：① 只补优质基金（评分≥2） ② 单日总投入 ≤¥'+DAILY_CAP.toLocaleString()+' ③ 单只 ≤¥'+MAX_PER_FUND.toLocaleString()+' ④ 卖出盈利补亏损 ⑤ 烂基金不补仓'+
+  '</div>'+
+  '</div>';
+
+document.getElementById('actionSummary').innerHTML = summaryHtml;
+</script>
+</body>
+</html>
