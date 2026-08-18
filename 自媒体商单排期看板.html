@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自媒体商单排期看板</title>
+<style>
+  :root{
+    --bg:#f7f5f2; --card:#ffffff; --line:#ece6df; --text:#2b2724; --muted:#8a8078;
+    --pink:#db2777; --indigo:#4f46e5; --cyan:#0891b2;
+    --done:#16a34a; --pending:#f59e0b;
+    --shadow:0 2px 10px rgba(80,60,40,.07);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+  header{padding:22px 28px 14px;background:linear-gradient(135deg,#fff,#faf6f1);border-bottom:1px solid var(--line);}
+  header h1{margin:0;font-size:22px;letter-spacing:.5px;}
+  header p{margin:6px 0 0;color:var(--muted);font-size:13px;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 60px;}
+
+  /* 对比看板 */
+  .dash{margin:22px 0;}
+  .dash h2{font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+  .dash h2 .tag{font-size:11px;font-weight:600;color:var(--muted);background:#efe9e2;padding:2px 8px;border-radius:8px;}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);}
+  .kpi .lbl{font-size:12px;color:var(--muted);}
+  .kpi .val{font-size:20px;font-weight:700;margin-top:4px;}
+  .kpi .sub{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  .cmp-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow);overflow-x:auto;}
+  table.cmp{width:100%;border-collapse:collapse;min-width:560px;}
+  table.cmp th,table.cmp td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
+  table.cmp th:first-child,table.cmp td:first-child{text-align:left;}
+  table.cmp thead th{font-size:12px;color:var(--muted);font-weight:600;}
+  table.cmp tr.total td{font-weight:700;background:#faf6f1;border-top:2px solid var(--line);}
+  .acct-name{display:inline-flex;align-items:center;gap:7px;font-weight:600;}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .bar-cell{position:relative;min-width:120px;}
+  .bar-track{background:#f0ebe4;border-radius:6px;height:14px;position:relative;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:6px;}
+  .bar-num{position:absolute;right:8px;top:-1px;font-size:11px;line-height:16px;color:#5b534c;}
+
+  /* 标签 */
+  .tabs{display:flex;gap:10px;margin:24px 0 18px;flex-wrap:wrap;}
+  .tab{appearance:none;border:2px solid transparent;background:#fff;border-radius:14px;padding:12px 20px;font-size:15px;font-weight:700;cursor:pointer;color:var(--muted);box-shadow:var(--shadow);transition:.18s;display:flex;align-items:center;gap:9px;}
+  .tab .cnt{font-size:12px;font-weight:600;background:#efe9e2;color:#6b625a;padding:1px 8px;border-radius:9px;}
+  .tab.active{color:#fff;}
+  .tab[data-acc="一拳啵妞"].active{background:var(--pink);border-color:var(--pink);}
+  .tab[data-acc="guoguogogo"].active{background:var(--indigo);border-color:var(--indigo);}
+  .tab[data-acc="抖音一拳啵妞"].active{background:var(--cyan);border-color:var(--cyan);}
+  .tab.active .cnt{background:rgba(255,255,255,.25);color:#fff;}
+
+  /* 账号区 */
+  .acct-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;}
+  .acct-title{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700;}
+  .acct-kpis{display:flex;gap:10px;flex-wrap:wrap;}
+  .mini{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;box-shadow:var(--shadow);}
+  .mini .l{font-size:11px;color:var(--muted);}
+  .mini .v{font-size:16px;font-weight:700;margin-top:2px;}
+  .btn{appearance:none;border:none;border-radius:11px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;background:#2b2724;color:#fff;}
+  .btn.ghost{background:#fff;color:var(--text);border:1px solid var(--line);}
+  .btn.pink{background:var(--pink);}
+  .btn.indigo{background:var(--indigo);}
+  .btn.cyan{background:var(--cyan);}
+  .btn.sm{padding:5px 10px;font-size:12px;border-radius:9px;}
+
+  .view-toggle{display:inline-flex;background:#efe9e2;border-radius:11px;padding:3px;margin-bottom:14px;}
+  .view-toggle button{appearance:none;border:none;background:transparent;padding:7px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);}
+  .view-toggle button.on{background:#fff;color:var(--text);box-shadow:var(--shadow);}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+  table.ord{width:100%;border-collapse:collapse;}
+  table.ord th,table.ord td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top;}
+  table.ord th{font-size:12px;color:var(--muted);background:#faf6f1;position:sticky;top:0;}
+  table.ord td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:9px;}
+  .badge.done{background:#dcfce7;color:var(--done);}
+  .badge.pending{background:#fef3c7;color:#b45309;}
+  .note{color:var(--muted);font-size:12px;}
+  .row-act{display:flex;gap:6px;}
+  .empty{padding:46px 20px;text-align:center;color:var(--muted);}
+  .empty .big{font-size:15px;font-weight:600;color:#6b625a;margin-bottom:6px;}
+
+  /* 日历 */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);}
+  .cal-head .mt{font-size:15px;font-weight:700;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:14px 16px;}
+  .cal-dow{text-align:center;font-size:12px;color:var(--muted);font-weight:600;padding:4px 0;}
+  .cal-cell{position:relative;min-height:62px;border:1px solid var(--line);border-radius:10px;padding:6px 7px;cursor:pointer;background:#fff;transition:.15s;}
+  .cal-cell:hover{border-color:#d9cfc4;}
+  .cal-cell.dim{background:#faf8f5;color:#c9c0b8;cursor:default;}
+  .cal-cell.today{border-color:var(--text);box-shadow:0 0 0 2px rgba(43,39,36,.08);}
+  .cal-cell.sel{outline:2px solid currentColor;outline-offset:-2px;}
+  .cal-cell .dnum{font-size:12px;font-weight:600;}
+  .cal-cell .chip{font-size:10px;margin-top:3px;background:#fbeaf2;color:var(--pink);border-radius:6px;padding:1px 5px;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cal-cell.ind .chip{background:#e8e9fb;color:var(--indigo);}
+  .cal-cell.cya .chip{background:#e2f5fa;color:var(--cyan);}
+  .day-detail{border-top:1px dashed var(--line);padding:14px 16px;display:none;}
+  .day-detail.show{display:block;}
+  .day-detail h4{margin:0 0 10px;font-size:13px;color:var(--muted);}
+  .dd-item{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .dd-item:last-child{border-bottom:none;}
+
+  /* 弹窗 */
+  .mask{position:fixed;inset:0;background:rgba(40,34,30,.4);display:none;align-items:center;justify-content:center;z-index:50;padding:16px;}
+  .mask.show{display:flex;}
+  .modal{background:#fff;border-radius:16px;width:430px;max-width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.2);}
+  .modal h3{margin:0 0 14px;font-size:16px;}
+  .field{margin-bottom:11px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px;font-family:inherit;background:#fcfbfa;}
+  .field textarea{resize:vertical;min-height:48px;}
+  .modal-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .foot{margin-top:30px;color:var(--muted);font-size:12px;text-align:center;line-height:1.7;}
+  @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<header>
+  <h1>自媒体商单排期看板</h1>
+  <p>一拳啵妞 · guoguogogo · 抖音一拳啵妞 — 三账号独立排期 + 数据对比</p>
+</header>
+
+<div class="wrap">
+  <!-- 数据对比看板 -->
+  <section class="dash">
+    <h2>数据对比看板 <span class="tag">三账号独立对比 + 总和</span></h2>
+    <div class="kpis" id="totalKpis"></div>
+    <div class="cmp-card">
+      <table class="cmp" id="cmpTable"></table>
+    </div>
+  </section>
+
+  <!-- 账号标签 -->
+  <div class="tabs" id="tabs"></div>
+
+  <!-- 当前账号 -->
+  <div class="acct-head">
+    <div class="acct-title" id="acctTitle"></div>
+    <div class="acct-kpis" id="acctKpis"></div>
+    <div>
+      <button class="btn" id="addBtn">+ 新增商单</button>
+    </div>
+  </div>
+
+  <div class="view-toggle">
+    <button id="btnList" class="on">列表</button>
+    <button id="btnCal">月历</button>
+  </div>
+
+  <div id="listPanel" class="panel"></div>
+
+  <div id="calPanel" style="display:none;">
+    <div class="panel">
+      <div class="cal-head">
+        <button class="btn ghost sm" id="prevM">‹ 上月</button>
+        <span class="mt" id="calMonth"></span>
+        <button class="btn ghost sm" id="nextM">下月 ›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="day-detail" id="dayDetail"></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    原始数据（原「大号」→ 一拳啵妞，原「小号」→ guoguogogo）已完整保留；抖音一拳啵妞留空，可手动添加。<br>
+    所有新增 / 修改 / 删除仅保存在本机浏览器（localStorage），不会清空任何原始记录。
+  </div>
+</div>
+
+<!-- 新增/编辑弹窗 -->
+<div class="mask" id="mask">
+  <div class="modal">
+    <h3 id="modalTitle">新增商单</h3>
+    <div class="field"><label>商单 / 产品</label><input id="fProduct" placeholder="如：帮宝适 - 纸尿裤测评"></div>
+    <div class="field"><label>发布日期</label><input id="fDate" type="date"></div>
+    <div class="field"><label>报价收入（¥）</label><input id="fAmount" type="number" step="0.01" placeholder="0"></div>
+    <div class="field"><label>成本（¥）</label><input id="fCost" type="number" step="0.01" placeholder="0"></div>
+    <div class="field"><label>返款（¥）</label><input id="fRebate" type="number" step="0.01" placeholder="0"></div>
+    <div class="field"><label>置换价值（¥）</label><input id="fExchange" type="number" step="0.01" placeholder="0"></div>
+    <div class="field"><label>状态</label>
+      <select id="fStatus"><option value="pending">待发布</option><option value="done">已完成</option></select>
+    </div>
+    <div class="field"><label>备注</label><textarea id="fNote" placeholder="选填"></textarea></div>
+    <div class="modal-acts">
+      <button class="btn ghost" id="cancelBtn">取消</button>
+      <button class="btn" id="saveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== 原始数据（逐条对照 cloud_backup_before_deleting_system_orders.json，未改动，仅映射账号）===== */
+const SEED = [
+  // —— 原「大号」→ 一拳啵妞 ——
+  {product:"帮宝适 - 纸尿裤超长使用体验测评",date:"2026-08-04",amount:5000,cost:600,rebate:3000,exchange:0,status:"done",note:"需露出产品外包装3秒以上",raw:"大号"},
+  {product:"十月结晶 - 待产包清单合集",date:"2026-08-07",amount:6000,cost:800,rebate:4000,exchange:0,status:"done",note:"需要出图文+视频两个版本",raw:"大号"},
+  {product:"babycare - 辅食碗套装开箱种草",date:"2026-08-11",amount:3500,cost:400,rebate:2000,exchange:0,status:"done",note:"搭配辅食教程一起发",raw:"大号"},
+  {product:"英氏 - 米粉辅食添加指南",date:"2026-08-17",amount:4200,cost:500,rebate:2500,exchange:0,status:"pending",note:"强调有机成分",raw:"大号"},
+  {product:"全棉时代 - 棉柔巾日常使用场景分享",date:"2026-08-21",amount:3800,cost:350,rebate:0,exchange:0,status:"pending",note:"",raw:"大号"},
+  {product:"飞鹤 - 奶粉转奶经验分享",date:"2026-08-24",amount:8000,cost:1000,rebate:5000,exchange:0,status:"pending",note:"高端线合作，注意调性匹配",raw:"大号"},
+  {product:"基诺清·梦想家系列凉鞋",date:"2026-07-31",amount:0.1,cost:44,rebate:367,exchange:200,status:"pending",note:"置换",raw:"大号"},
+  {product:"爱他美领航·奶粉",date:"2026-08-02",amount:450,cost:44,rebate:0,exchange:0,status:"pending",note:"",raw:"大号"},
+  {product:"外研社·牛顿启蒙科普绘本",date:"2026-08-14",amount:0.1,cost:44,rebate:0,exchange:129,status:"pending",note:"单推",raw:"大号"},
+  {product:"挪客·保温冰箱",date:"2026-08-17",amount:0.1,cost:22,rebate:0,exchange:300,status:"pending",note:"置换",raw:"大号"},
+  {product:"合生元·奶粉",date:"2026-08-20",amount:300,cost:44,rebate:0,exchange:0,status:"pending",note:"",raw:"大号"},
+  {product:"欧恩贝·奶粉",date:"2026-08-27",amount:412.5,cost:44,rebate:0,exchange:0,status:"pending",note:"",raw:"大号"},
+  {product:"贝易·爬爬垫",date:"2026-08-31",amount:400,cost:44,rebate:0,exchange:0,status:"pending",note:"",raw:"大号"},
+  {product:"外研社·波西西英文启蒙+娃衣",date:"2026-09-01",amount:0.1,cost:44,rebate:0,exchange:180,status:"pending",note:"单推或组合",raw:"大号"},
+  // —— 原「小号」→ guoguogogo ——
+  {product:"悦哇洗发水",date:"2026-08-25",amount:30,cost:0,rebate:0,exchange:75,status:"pending",note:"",raw:"小号"}
+  // —— 抖音一拳啵妞：留空，手动添加 ——
+];
+const ACCOUNTS = [
+  {key:"一拳啵妞",   color:"var(--pink)",   raw:"大号"},
+  {key:"guoguogogo", color:"var(--indigo)", raw:"小号"},
+  {key:"抖音一拳啵妞",color:"var(--cyan)",   raw:"抖音"}
+];
+const ACC_MAP = {}; ACCOUNTS.forEach(a=>ACC_MAP[a.raw]=a.key);
+
+/* ===== 存储 ===== */
+const LS_KEY = "mbn_orders_v2";
+function loadOrders(){
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){}
+  if(Array.isArray(saved) && localStorage.getItem(LS_KEY)!==null){
+    return saved;
+  }
+  // 首次：用 SEED 生成（按原始归属 raw 字段映射为新账号名）
+  const seeded = SEED.map((o,i)=>{
+    const {raw, ...rest} = o;
+    return Object.assign({id:Date.now()+i, account:ACC_MAP[raw]}, rest);
+  });
+  localStorage.setItem(LS_KEY, JSON.stringify(seeded));
+  return seeded;
+}
+let orders = loadOrders();
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(orders)); }
+
+/* ===== 工具 ===== */
+const ACC_COLOR = {"一拳啵妞":"var(--pink)","guoguogogo":"var(--indigo)","抖音一拳啵妞":"var(--cyan)"};
+const ACC_CLASS = {"一拳啵妞":"","guoguogogo":"ind","抖音一拳啵妞":"cya"};
+function fmt(n){ n=Number(n)||0; return n.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:2}); }
+function money(n){ return "¥"+fmt(n); }
+function byAcc(acc){ return orders.filter(o=>o.account===acc); }
+function agg(list){
+  let amount=0,cost=0,rebate=0,exchange=0,done=0;
+  list.forEach(o=>{amount+=Number(o.amount)||0;cost+=Number(o.cost)||0;rebate+=Number(o.rebate)||0;exchange+=Number(o.exchange)||0;if(o.status==="done")done++;});
+  const net = amount-cost-rebate;
+  return {n:list.length,amount,cost,rebate,exchange,net,done,pending:list.length-done};
+}
+
+/* ===== 对比看板 ===== */
+function renderDashboard(){
+  const all = agg(orders);
+  const tk = document.getElementById('totalKpis');
+  tk.innerHTML = [
+    {l:"总商单数",v:all.n,s:donePending(all)},
+    {l:"总收入(报价)",v:money(all.amount),s:"成本 "+money(all.cost)},
+    {l:"总返款",v:money(all.rebate),s:"置换 "+money(all.exchange)},
+    {l:"总净收益",v:money(all.net),s:"收入−成本−返款"}
+  ].map(k=>`<div class="kpi"><div class="lbl">${k.l}</div><div class="val">${k.v}</div><div class="sub">${k.s}</div></div>`).join('');
+
+  const rows = ACCOUNTS.map(a=>agg(byAcc(a.key)));
+  const maxA = Math.max(1,...rows.map(r=>r.amount), all.amount);
+  const maxN = Math.max(1,...rows.map(r=>Math.abs(r.net)), Math.abs(all.net));
+  let html = `<thead><tr><th>账号</th><th>商单数</th><th>收入</th><th>成本</th><th>返款</th><th>净收益</th><th>完成</th></tr></thead><tbody>`;
+  ACCOUNTS.forEach((a,i)=>{
+    const r=rows[i];
+    html += `<tr>
+      <td><span class="acct-name"><span class="dot" style="background:${a.color}"></span>${a.key}</span></td>
+      <td>${r.n}</td>
+      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(r.amount/maxA*100)}%;background:${a.color}"></div></div><span class="bar-num">${money(r.amount)}</span></td>
+      <td>${money(r.cost)}</td>
+      <td>${money(r.rebate)}</td>
+      <td style="color:${r.net>=0?'var(--done)':'var(--pending)'}">${money(r.net)}</td>
+      <td>${r.done}/${r.n}</td>
+    </tr>`;
+  });
+  html += `<tr class="total"><td>合计</td><td>${all.n}</td>
+      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(all.amount/maxA*100)}%;background:#2b2724"></div></div><span class="bar-num">${money(all.amount)}</span></td>
+      <td>${money(all.cost)}</td><td>${money(all.rebate)}</td>
+      <td style="color:${all.net>=0?'var(--done)':'var(--pending)'}">${money(all.net)}</td><td>${all.done}/${all.n}</td></tr>`;
+  html += `</tbody>`;
+  document.getElementById('cmpTable').innerHTML = html;
+}
+function donePending(a){ return `已完成 ${a.done} · 待发布 ${a.pending}`; }
+
+/* ===== 标签 ===== */
+let curAcc = ACCOUNTS[0].key;
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = ACCOUNTS.map(a=>{
+    const n = byAcc(a.key).length;
+    return `<button class="tab ${a.key===curAcc?'active':''}" data-acc="${a.key}"><span class="dot" style="background:${a.color}"></span>${a.key}<span class="cnt">${n}</span></button>`;
+  }).join('');
+  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{curAcc=t.dataset.acc;renderAll();});
+}
+
+/* ===== 账号头部 ===== */
+function renderAcctHead(){
+  const a = ACCOUNTS.find(x=>x.key===curAcc);
+  document.getElementById('acctTitle').innerHTML = `<span class="dot" style="background:${a.color}"></span>${a.key} <span style="font-size:12px;color:var(--muted);font-weight:500">（原${a.raw}）</span>`;
+  const r = agg(byAcc(curAcc));
+  document.getElementById('acctKpis').innerHTML = [
+    {l:"商单",v:r.n},{l:"收入",v:money(r.amount)},{l:"净收益",v:money(r.net)},{l:"待发布",v:r.pending}
+  ].map(k=>`<div class="mini"><div class="l">${k.l}</div><div class="v">${k.v}</div></div>`).join('');
+  const btn = document.getElementById('addBtn');
+  btn.className = "btn " + (curAcc==="抖音一拳啵妞"?"cyan":curAcc==="guoguogogo"?"indigo":"pink");
+}
+
+/* ===== 列表视图 ===== */
+function renderList(){
+  const list = byAcc(curAcc).slice().sort((a,b)=>a.date<b.date?-1:1);
+  let html = `<table class="ord"><thead><tr>
+      <th>商单 / 产品</th><th>日期</th><th class="num">收入</th><th class="num">成本</th>
+      <th class="num">返款</th><th class="num">置换</th><th>状态</th><th>备注</th><th></th>
+    </tr></thead><tbody>`;
+  if(list.length===0){
+    html = `<div class="empty"><div class="big">这个账号还没有商单</div>点击右上角「+ 新增商单」手动添加吧</div>`;
+    document.getElementById('listPanel').innerHTML = html; return;
+  }
+  list.forEach(o=>{
+    html += `<tr>
+      <td>${escapeHtml(o.product||'')}</td>
+      <td>${o.date}</td>
+      <td class="num">${money(o.amount)}</td>
+      <td class="num">${money(o.cost)}</td>
+      <td class="num">${money(o.rebate)}</td>
+      <td class="num">${o.exchange?money(o.exchange):'—'}</td>
+      <td><span class="badge ${o.status==='done'?'done':'pending'}">${o.status==='done'?'已完成':'待发布'}</span></td>
+      <td class="note">${escapeHtml(o.note||'')}</td>
+      <td><div class="row-act">
+        <button class="btn ghost sm" onclick="editOrder(${o.id})">改</button>
+        <button class="btn ghost sm" onclick="delOrder(${o.id})">删</button>
+      </div></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  document.getElementById('listPanel').innerHTML = html;
+}
+function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ===== 月历视图 ===== */
+let calY=2026, calM=7; // 0-based; 默认 2026-08
+function initCal(){ const d=new Date(); calY=d.getFullYear(); calM=d.getMonth(); }
+function renderCal(){
+  const acc = curAcc;
+  const list = byAcc(acc);
+  const map = {};
+  list.forEach(o=>{ (map[o.date]=map[o.date]||[]).push(o); });
+
+  const monthNames=["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  document.getElementById('calMonth').textContent = calY+"年"+monthNames[calM];
+  const first = new Date(calY,calM,1).getDay();
+  const days = new Date(calY,calM+1,0).getDate();
+  const today = new Date();
+  let cells = "";
+  // 前置空格
+  for(let i=0;i<first;i++){ cells += `<div class="cal-cell dim"></div>`; }
+  for(let d=1;d<=days;d++){
+    const ds = calY+"-"+String(calM+1).padStart(2,'0')+"-"+String(d).padStart(2,'0');
+    const items = map[ds]||[];
+    const cls = ["cal-cell", ACC_CLASS[acc]].join(' ');
+    const isToday = today.getFullYear()===calY&&today.getMonth()===calM&&today.getDate()===d;
+    const chip = items.length ? `<div class="chip" title="${items.length}单">${items.length}单 · ${items[0].product.slice(0,6)}</div>` : "";
+    cells += `<div class="${cls} ${isToday?'today':''}" data-date="${ds}">
+        <div class="dnum">${d}</div>${chip}</div>`;
+  }
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = `<div class="cal-dow">日</div><div class="cal-dow">一</div><div class="cal-dow">二</div><div class="cal-dow">三</div><div class="cal-dow">四</div><div class="cal-dow">五</div><div class="cal-dow">六</div>` + cells;
+  grid.querySelectorAll('.cal-cell[data-date]').forEach(c=>{
+    c.onclick=()=>{ showDay(c.dataset.date, map[c.dataset.date]||[]); };
+  });
+  document.getElementById('dayDetail').className='day-detail';
+}
+function showDay(ds,items){
+  const dd = document.getElementById('dayDetail');
+  if(!items.length){ dd.className='day-detail'; dd.innerHTML=''; return; }
+  let h = `<h4>${ds} · 共 ${items.length} 单</h4>`;
+  items.forEach(o=>{
+    h += `<div class="dd-item"><span><b>${escapeHtml(o.product)}</b><br><span class="note">${o.status==='done'?'已完成':'待发布'} · 收入${money(o.amount)} · 成本${money(o.cost)} · 返款${money(o.rebate)}${o.exchange?' · 置换'+money(o.exchange):''}</span></span>
+      <span class="row-act"><button class="btn ghost sm" onclick="editOrder(${o.id})">改</button></span></div>`;
+  });
+  dd.innerHTML=h; dd.className='day-detail show';
+}
+
+/* ===== 弹窗 ===== */
+let editingId = null;
+function openModal(order){
+  editingId = order?order.id:null;
+  document.getElementById('modalTitle').textContent = order?"编辑商单":"新增商单 — "+curAcc;
+  document.getElementById('fProduct').value = order?order.product:'';
+  document.getElementById('fDate').value = order?order.date:'';
+  document.getElementById('fAmount').value = order?order.amount:'';
+  document.getElementById('fCost').value = order?order.cost:'';
+  document.getElementById('fRebate').value = order?order.rebate:'';
+  document.getElementById('fExchange').value = order?order.exchange:'';
+  document.getElementById('fStatus').value = order?order.status:'pending';
+  document.getElementById('fNote').value = order?order.note:'';
+  document.getElementById('mask').classList.add('show');
+}
+function closeModal(){ document.getElementById('mask').classList.remove('show'); editingId=null; }
+function saveModal(){
+  const v = {
+    product:document.getElementById('fProduct').value.trim(),
+    date:document.getElementById('fDate').value,
+    amount:Number(document.getElementById('fAmount').value)||0,
+    cost:Number(document.getElementById('fCost').value)||0,
+    rebate:Number(document.getElementById('fRebate').value)||0,
+    exchange:Number(document.getElementById('fExchange').value)||0,
+    status:document.getElementById('fStatus').value,
+    note:document.getElementById('fNote').value.trim()
+  };
+  if(!v.product||!v.date){ alert("请填写商单名称和发布日期"); return; }
+  if(editingId){
+    const o=orders.find(x=>x.id===editingId); Object.assign(o,v);
+  }else{
+    orders.push(Object.assign({id:Date.now(),account:curAcc},v));
+  }
+  save(); closeModal(); renderAll();
+}
+function editOrder(id){ const o=orders.find(x=>x.id===id); if(o) openModal(o); }
+function delOrder(id){ if(confirm("确定删除这条商单？")){ orders=orders.filter(x=>x.id!==id); save(); renderAll(); } }
+
+/* ===== 视图切换 ===== */
+function setView(v){
+  document.getElementById('btnList').classList.toggle('on',v==='list');
+  document.getElementById('btnCal').classList.toggle('on',v==='cal');
+  document.getElementById('listPanel').style.display = v==='list'?'block':'none';
+  document.getElementById('calPanel').style.display = v==='cal'?'block':'none';
+  if(v==='cal') renderCal();
+}
+
+/* ===== 总渲染 ===== */
+function renderAll(){ renderTabs(); renderDashboard(); renderAcctHead(); renderList(); if(document.getElementById('calPanel').style.display!=='none') renderCal(); }
+
+/* ===== 事件 ===== */
+document.getElementById('addBtn').onclick=()=>openModal(null);
+document.getElementById('cancelBtn').onclick=closeModal;
+document.getElementById('saveBtn').onclick=saveModal;
+document.getElementById('mask').onclick=(e)=>{ if(e.target.id==='mask') closeModal(); };
+document.getElementById('btnList').onclick=()=>setView('list');
+document.getElementById('btnCal').onclick=()=>setView('cal');
+document.getElementById('prevM').onclick=()=>{ calM--; if(calM<0){calM=11;calY--;} renderCal(); };
+document.getElementById('nextM').onclick=()=>{ calM++; if(calM>11){calM=0;calY++;} renderCal(); };
+
+initCal();
+renderAll();
+setView('list');
+</script>
+</body>
+</html>
