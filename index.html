@@ -2990,22 +2990,20 @@ var fundBaseData = null;
 var fundEstimateStatus = 'idle';
 
 function initFundBaseData() {
-  // 真实基础持仓：份额(shares)与投入成本(investedCost)由用户持仓金额与收益率反推
-  // （2026-08-05 快照，基于 2026-08-04 最新净值）。costNav = investedCost / shares（买入时的成本净值）
+  // 真实基础持仓：市值(value)与持有收益率(ret) 直接采用用户最新报告（钉死，不反推）。
+  // 成本(cost) = 市值 / (1 + 收益率)。净值(nav)仅用于展示与当日策略信号。
+  // 下列 value/ret/cost 与 fund-live.json 保持一致（最新报告：2026-08-18）。
   var raw = [
-    {code:"001438",name:"易方达瑞享混合E",shares:1426.46,investedCost:13415.04,nav:8.4405,mgr:"武阳",mgrAnn:25.63,risk:"中高风险",type:"混合-灵活",yr1:0.9693,yr1txt:"+96.9%",ytd:0.4015,ytdtxt:"+40.2%",m1:-0.3621,m1txt:"-36.2%",vol:0.5556,maxdd:-0.4026,stock:0.944,topInd:"制造业83%",canBuy:true,score:5,scoreTag:"优质"},
-    {code:"001753",name:"红土创新新兴产业混合A",shares:1072.51,investedCost:5999.44,nav:4.013,mgr:"廖星昊",mgrAnn:28.46,risk:"中高风险",type:"混合-灵活",yr1:1.2001,yr1txt:"+120.0%",ytd:0.3667,ytdtxt:"+36.7%",m1:-0.3907,m1txt:"-39.1%",vol:0.45,maxdd:-0.35,stock:0.916,topInd:"制造业82%",canBuy:true,score:6,scoreTag:"优质"},
-    {code:"008327",name:"东财中证通信C",shares:2352.74,investedCost:13232.73,nav:4.0625,mgr:"姚楠燕",mgrAnn:80.34,risk:"中高风险",type:"股票-指数",yr1:1.2475,yr1txt:"+124.8%",ytd:0.3581,ytdtxt:"+35.8%",m1:-0.3522,m1txt:"-35.2%",vol:0.40,maxdd:-0.35,stock:0.953,topInd:"制造业94%",canBuy:true,score:5,scoreTag:"优质"},
-    {code:"001216",name:"易方达新收益混合A",shares:1847.29,investedCost:6983.20,nav:4.0286,mgr:"张清华",mgrAnn:17.22,risk:"中高风险",type:"混合-灵活",yr1:0.4061,yr1txt:"+40.6%",ytd:0.2450,ytdtxt:"+24.5%",m1:-0.3079,m1txt:"-30.8%",vol:0.30,maxdd:-0.25,stock:0.948,topInd:"制造业75%",canBuy:true,score:5,scoreTag:"优质"},
-    {code:"570001",name:"诺德价值优势混合",shares:2221.20,investedCost:6622.94,nav:3.1591,mgr:"罗世锋",mgrAnn:13.20,risk:"中高风险",type:"混合-偏股",yr1:0.3975,yr1txt:"+39.8%",ytd:0.0535,ytdtxt:"+5.4%",m1:-0.1849,m1txt:"-18.5%",vol:0.30,maxdd:-0.28,stock:0.934,topInd:"制造业77%",canBuy:true,score:4,scoreTag:"良好"},
-    {code:"161725",name:"招商中证白酒指数A",shares:5307.84,investedCost:5727.81,nav:0.5701,mgr:"侯昊",mgrAnn:5.71,risk:"中高风险",type:"股票-指数",yr1:-0.2167,yr1txt:"-21.7%",ytd:-0.1771,ytdtxt:"-17.7%",m1:0.1477,m1txt:"+14.8%",vol:0.27,maxdd:-0.33,stock:0.948,topInd:"白酒94%",canBuy:true,score:0,scoreTag:"观望"},
-    {code:"000294",name:"华安生态优先混合A",shares:11106.96,investedCost:48116.93,nav:2.786,mgr:"陈媛",mgrAnn:5.77,risk:"中高风险",type:"混合-偏股",yr1:0.0618,yr1txt:"+6.2%",ytd:-0.0047,ytdtxt:"-0.5%",m1:-0.3329,m1txt:"-33.3%",vol:0.357,maxdd:-0.347,stock:0.893,topInd:"制造业83%",canBuy:true,score:1,scoreTag:"观望"},
-    {code:"162605",name:"景顺长城鼎益混合(LOF)A",shares:12992.88,investedCost:34587.93,nav:1.544,mgr:"刘彦春",mgrAnn:6.75,risk:"中高风险",type:"混合-偏股",yr1:-0.1702,yr1txt:"-17.0%",ytd:-0.1571,ytdtxt:"-15.7%",m1:-0.2765,m1txt:"-27.6%",vol:0.276,maxdd:-0.297,stock:0.918,topInd:"制造业83%",canBuy:true,score:0,scoreTag:"观望"}
+    {code:"001438",name:"易方达瑞享混合E",value:12237.46,ret:0.074,cost:11394.28,nav:10.1005,mgr:"武阳",mgrAnn:25.63,risk:"中高风险",type:"混合-灵活",yr1:0.9693,yr1txt:"+96.9%",ytd:0.4015,ytdtxt:"+40.2%",m1:-0.3621,m1txt:"-36.2%",vol:0.5556,maxdd:-0.4026,stock:0.944,topInd:"制造业83%",canBuy:true,score:5,scoreTag:"优质"},
+    {code:"001753",name:"红土创新新兴产业混合A",value:3965.9,ret:-0.1596,cost:4719.06,nav:4.701,mgr:"廖星昊",mgrAnn:28.46,risk:"中高风险",type:"混合-灵活",yr1:1.2001,yr1txt:"+120.0%",ytd:0.3667,ytdtxt:"+36.7%",m1:-0.3907,m1txt:"-39.1%",vol:0.45,maxdd:-0.35,stock:0.916,topInd:"制造业82%",canBuy:true,score:6,scoreTag:"优质"},
+    {code:"008327",name:"东财中证通信C",value:10967.76,ret:-0.1712,cost:13233.30,nav:4.6613,mgr:"姚楠燕",mgrAnn:80.34,risk:"中高风险",type:"股票-指数",yr1:1.2475,yr1txt:"+124.8%",ytd:0.3581,ytdtxt:"+35.8%",m1:-0.3522,m1txt:"-35.2%",vol:0.40,maxdd:-0.35,stock:0.953,topInd:"制造业94%",canBuy:true,score:5,scoreTag:"优质"},
+    {code:"001216",name:"易方达新收益混合A",value:8383.41,ret:0.1976,cost:7000.18,nav:4.5381,mgr:"张清华",mgrAnn:17.22,risk:"中高风险",type:"混合-灵活",yr1:0.4061,yr1txt:"+40.6%",ytd:0.2450,ytdtxt:"+24.5%",m1:-0.3079,m1txt:"-30.8%",vol:0.30,maxdd:-0.25,stock:0.948,topInd:"制造业75%",canBuy:true,score:5,scoreTag:"优质"},
+    {code:"570001",name:"诺德价值优势混合",value:7602.02,ret:0.1477,cost:6623.70,nav:3.4221,mgr:"罗世锋",mgrAnn:13.20,risk:"中高风险",type:"混合-偏股",yr1:0.3975,yr1txt:"+39.8%",ytd:0.0535,ytdtxt:"+5.4%",m1:-0.1849,m1txt:"-18.5%",vol:0.30,maxdd:-0.28,stock:0.934,topInd:"制造业77%",canBuy:true,score:4,scoreTag:"良好"},
+    {code:"161725",name:"招商中证白酒指数A",value:2967.03,ret:-0.482,cost:5727.86,nav:0.5589,mgr:"侯昊",mgrAnn:5.71,risk:"中高风险",type:"股票-指数",yr1:-0.2167,yr1txt:"-21.7%",ytd:-0.1771,ytdtxt:"-17.7%",m1:0.1477,m1txt:"+14.8%",vol:0.27,maxdd:-0.33,stock:0.948,topInd:"白酒94%",canBuy:true,score:0,scoreTag:"观望"},
+    {code:"000294",name:"华安生态优先混合A",value:33543.38,ret:-0.3029,cost:48118.46,nav:3.02,mgr:"陈媛",mgrAnn:5.77,risk:"中高风险",type:"混合-偏股",yr1:0.0618,yr1txt:"+6.2%",ytd:-0.0047,ytdtxt:"-0.5%",m1:-0.3329,m1txt:"-33.3%",vol:0.357,maxdd:-0.347,stock:0.893,topInd:"制造业83%",canBuy:true,score:1,scoreTag:"观望"},
+    {code:"162605",name:"景顺长城鼎益混合(LOF)A",value:22517.16,ret:-0.3522,cost:34759.43,nav:1.733,mgr:"刘彦春",mgrAnn:6.75,risk:"中高风险",type:"混合-偏股",yr1:-0.1702,yr1txt:"-17.0%",ytd:-0.1571,ytdtxt:"-15.7%",m1:-0.2765,m1txt:"-27.6%",vol:0.276,maxdd:-0.297,stock:0.918,topInd:"制造业83%",canBuy:true,score:0,scoreTag:"观望"}
   ];
-  raw.forEach(function(f) {
-    f.costNav = f.investedCost / f.shares;   // 成本净值
-    f.cost = f.investedCost;                 // 补仓金额基准 = 投入成本
-  });
+  raw.forEach(function(f) { f.investedCost = f.cost; });
   return raw;
 }
 
@@ -3027,6 +3025,11 @@ function todayStr(d) {
   d = d || new Date();
   var m = d.getMonth() + 1, day = d.getDate();
   return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+}
+
+// 金额格式：精确到分（与用户基金 App 的「持有金额」对齐）
+function fmtMoney(x) {
+  return (x || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // 当前基金数据的展示模式：'intraday' = 盘中实时估值，'nav' = 收盘确认净值
@@ -3063,10 +3066,15 @@ function applyFundLive(live) {
   gFundLiveIntradayDate = live ? (live.intradayDate || '') : '';
   var est = {};
   (live.funds || []).forEach(function(f) {
+    // 钉死值：市值(value)/收益率(ret)/成本(cost) 直接来自用户报告，不反推
     var price = (typeof f.price === 'number') ? f.price : f.nav;
     var chg = (f.mode === 'intraday') ? (f.gszzl != null ? f.gszzl : f.dayChg) : f.dayChg;
     var gz = (f.mode === 'intraday') ? f.gztime : f.navDate;
-    est[f.code] = { fundcode: f.code, gsz: price, gszzl: chg, gztime: gz, mode: f.mode };
+    est[f.code] = {
+      value: f.value, ret: f.ret, cost: f.cost,
+      nav: price, gszzl: chg, gztime: gz, mode: f.mode,
+      score: f.score, advice: f.advice, adviceReason: f.adviceReason, name: f.name
+    };
   });
   doRenderFund(est);
   updateFundLiveBadge(live);
@@ -3100,20 +3108,21 @@ function applyTxns(funds) {
     if (!list || !list.length) { f.txnCount = 0; return; }
     f.txnCount = list.length;
     list.forEach(function(tx) {
-      var nav = (typeof tx.nav === 'number' && tx.nav > 0) ? tx.nav : f.nav;
+      // 金额制：补仓加钱、减仓按比例减（不再依赖份额）
       if (tx.t === 'buy') {
-        f.shares += tx.amt / nav;
-        f.investedCost += tx.amt;
+        f.value += tx.amt;
+        f.cost += tx.amt;
       } else {
-        var s = tx.amt / nav;
-        if (s > f.shares) s = f.shares;
-        f.shares -= s;
-        f.investedCost -= f.costNav * s;
-        if (f.investedCost < 0) f.investedCost = 0;
+        var ratio = f.value > 0 ? (tx.amt / f.value) : 0;
+        if (tx.amt > f.value) ratio = 1;
+        f.value -= tx.amt;
+        f.cost -= f.cost * ratio;
       }
     });
-    if (f.shares > 0) f.costNav = f.investedCost / f.shares;
-    f.cost = f.investedCost;
+    if (f.value < 0) f.value = 0;
+    if (f.cost < 0) f.cost = 0;
+    f.ret = f.cost > 0 ? (f.value / f.cost - 1) : 0;
+    f.investedCost = f.cost;
   });
 }
 var gTxnUIReady = false;
@@ -3175,7 +3184,7 @@ function exportTxns() {
   if (!n) { alert('暂无本地回填记录。'); return; }
   var lines = ['【基金回填交易记录】导出时间 ' + new Date().toLocaleString('zh-CN'),
     '请把以下内容发给你的 AI，让它把交易固化进持仓并重新部署（所有设备 / 每日策略都会精确）：', ''];
-  for (var code in o) { (o[code]||[]).forEach(function(tx){ lines.push(code + ' | ' + (tx.t==='buy'?'补仓':'减仓') + ' | ¥' + tx.amt + ' | ' + tx.date + (tx.nav?(' | 净值¥'+tx.nav):'')); }); }
+  for (var code in o) { (o[code]||[]).forEach(function(tx){ lines.push(code + ' | ' + (tx.t==='buy'?'补仓':'减仓') + ' | ¥' + tx.amt + ' | ' + tx.date); }); }
   var txt = lines.join('\n'); copyFundText(txt);
   alert('已复制 ' + n + ' 笔回填记录到剪贴板。\n\n粘贴给 AI 即可把交易固化进持仓。');
 }
@@ -3187,34 +3196,34 @@ function copyFundText(t) {
 
 function doRenderFund(estimates) {
   var funds = fundBaseData.map(function(f) { return Object.assign({}, f); });
-  applyTxns(funds);
-  gLastEstimates = estimates;
   var hasEstimate = false;
+  // 1) 合并 live 钉死值（用户报告的市值/收益率/成本），净值仅作信号
   if (estimates) {
     funds.forEach(function(f) {
       var est = estimates[f.code];
-      if (est && est.gsz) {
-        f.nav = parseFloat(est.gsz);
-        f.ret = f.nav / f.costNav - 1;
-        f.curValue = Math.round(f.shares * f.nav);
-        f.pnl = f.curValue - f.investedCost;
-        f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
-        f.estGztime = est.gztime;
-        f.estGszzl = parseFloat(est.gszzl) || 0;
-        hasEstimate = true;
-      } else {
-        f.curValue = f.cost;
-        f.pnl = f.curValue - f.investedCost;
-        f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
-      }
-    });
-  } else {
-    funds.forEach(function(f) {
-      f.curValue = f.cost;
-      f.pnl = f.curValue - f.investedCost;
-      f.needGain = f.nav > 0 ? (f.costNav - f.nav) / f.nav : Infinity;
+      if (!est) return;
+      if (typeof est.value === 'number') f.value = est.value;
+      if (typeof est.ret === 'number') f.ret = est.ret;
+      if (typeof est.cost === 'number') f.cost = est.cost;
+      if (typeof est.nav === 'number' && est.nav > 0) f.nav = est.nav;
+      f.estGszzl = parseFloat(est.gszzl) || 0;
+      f.estGztime = est.gztime;
+      if (est.score != null) f.score = est.score;
+      if (est.advice) f.advice = est.advice;
+      if (est.adviceReason) f.adviceReason = est.adviceReason;
+      hasEstimate = true;
     });
   }
+  // 2) 在钉死值之上叠加本地回填（金额制）
+  applyTxns(funds);
+  gLastEstimates = estimates;
+  // 3) 显示值钉死为 value/ret/cost（精确到分，与用户 App 对齐）
+  funds.forEach(function(f) {
+    f.investedCost = f.cost;
+    f.curValue = f.value;
+    f.pnl = f.curValue - f.investedCost;
+    f.needGain = f.ret < 0 ? (-f.ret / (1 + f.ret)) : 0;
+  });
 
   funds.forEach(function(f) { gNavByCode[f.code] = f.nav; });
 
@@ -3228,12 +3237,12 @@ function doRenderFund(estimates) {
   var totalPnl = totalValue - totalCost;
   var totalRet = totalPnl / totalCost;
 
-  document.getElementById('fundTotalVal').textContent = '¥' + totalValue.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+  document.getElementById('fundTotalVal').textContent = '¥' + fmtMoney(totalValue);
   var pnlLabel = totalPnl >= 0 ? '总浮盈 +¥' : '总浮亏 -¥';
-  document.getElementById('fundTotalPnl').textContent = pnlLabel + Math.abs(totalPnl).toLocaleString('zh-CN', {maximumFractionDigits: 0}) + '（' + (totalRet*100).toFixed(2) + '%）';
+  document.getElementById('fundTotalPnl').textContent = pnlLabel + fmtMoney(Math.abs(totalPnl)) + '（' + (totalRet*100).toFixed(2) + '%）';
   document.getElementById('fundTotalPnl').style.color = totalRet >= 0 ? 'var(--danger)' : 'var(--success)';
   var hdrCost = document.getElementById('fundHeaderCost');
-  if (hdrCost) hdrCost.textContent = '¥' + totalCost.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+  if (hdrCost) hdrCost.textContent = '¥' + fmtMoney(totalCost);
 
   document.getElementById('fundWinCount').textContent = winners.length + '只';
   document.getElementById('fundWinDetail').textContent = winners.length > 0 ? '「'+winners.map(function(f){return f.code;}).join(' / ')+'」' : '无';
@@ -3318,8 +3327,8 @@ function doRenderFund(estimates) {
     }
     var amt = Math.max(roundMoney(f.cost * ratio), 500);
     amt = Math.min(amt, MAX_PER_FUND, (remainingBudget||DAILY_CAP));
-    var afterCostNav = (f.investedCost+amt)/(f.shares+amt/f.nav);
-    return {cls:'buy',action:'buy',amount:amt,actionLabel:'今日补仓',title:(tier==='轻度'?'🔴 轻度浮亏 — 档位补仓':tier==='中度'?'🔴🔴 中度浮亏 — 档位补仓':'🔴🔴🔴 深度浮亏 — 档位补仓'),body:'浮亏 '+pctStr+'，'+tNote+'，基金质量 <strong>'+f.scoreTag+'</strong>。触及<strong>'+tier+'档位</strong>（成本下 '+Math.abs(f.ret*100).toFixed(0)+'%），今日补仓 <strong>¥'+amt.toLocaleString()+'</strong>（占仓位 '+(amt/f.cost*100).toFixed(0)+'%），成本 ¥'+f.costNav.toFixed(2)+'→<strong>¥'+afterCostNav.toFixed(2)+'</strong>。',tip:'操作：支付宝 → 基金 → 买入 → 输入 ¥'+amt.toLocaleString()};
+    var afterRet = (f.value + amt) / (f.cost + amt) - 1;
+    return {cls:'buy',action:'buy',amount:amt,actionLabel:'今日补仓',title:(tier==='轻度'?'🔴 轻度浮亏 — 档位补仓':tier==='中度'?'🔴🔴 中度浮亏 — 档位补仓':'🔴🔴🔴 深度浮亏 — 档位补仓'),body:'浮亏 '+pctStr+'，'+tNote+'，基金质量 <strong>'+f.scoreTag+'</strong>。触及<strong>'+tier+'档位</strong>（成本下 '+Math.abs(f.ret*100).toFixed(0)+'%），今日补仓 <strong>¥'+amt.toLocaleString()+'</strong>（占仓位 '+(amt/f.cost*100).toFixed(0)+'%），收益率 '+((f.ret*100).toFixed(1))+'%→<strong>'+(afterRet*100).toFixed(1)+'%</strong>。',tip:'操作：支付宝 → 基金 → 买入 → 输入 ¥'+amt.toLocaleString()};
   }
 
   // 生成建议
@@ -3339,7 +3348,7 @@ function doRenderFund(estimates) {
     var cardCls = f.ret >= 0 ? 'profit' : (adv.action === 'hold' ? 'loss' : 'deep-loss');
     var retCls = f.ret >= 0 ? 'up' : 'down';
     var retSign = f.ret >= 0 ? '+' : '';
-    var barPct = Math.max(0, Math.min(100, (f.nav/f.costNav)*100));
+    var barPct = f.ret >= 0 ? 100 : Math.max(5, Math.min(99, (1 + f.ret) * 100));
     var barColor = f.ret >= 0 ? 'var(--danger)' : 'var(--accent)';
     var scoreColor = f.score >= 4 ? 'var(--accent)' : (f.score >= 2 ? 'var(--warning)' : 'var(--text-muted)');
     var scoreBg = f.score >= 4 ? 'var(--accent-soft)' : (f.score >= 2 ? 'var(--warning-soft)' : 'var(--input-bg)');
@@ -3361,14 +3370,14 @@ function doRenderFund(estimates) {
       '</div>'+
       actionBadge +
       '<div class="fund-stats-grid">'+
-        '<div class="fund-stat-row"><span class="kl">成本</span><span class="kv">¥'+f.investedCost.toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
-        '<div class="fund-stat-row"><span class="kl">市值</span><span class="kv">¥'+f.curValue.toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
+        '<div class="fund-stat-row"><span class="kl">成本</span><span class="kv">¥'+fmtMoney(f.investedCost)+'</span></div>'+
+        '<div class="fund-stat-row"><span class="kl">市值</span><span class="kv">¥'+fmtMoney(f.curValue)+'</span></div>'+
         '<div class="fund-stat-row"><span class="kl">净值</span><span class="kv">¥'+f.nav.toFixed(4)+(gFundLiveMode==='intraday'?' (估)':'')+'</span></div>'+
-        '<div class="fund-stat-row"><span class="kl">成本净值</span><span class="kv">¥'+f.costNav.toFixed(4)+'</span></div>'+
-        '<div class="fund-stat-row"><span class="kl">持仓盈亏</span><span class="kv" style="color:'+(f.pnl>=0?'var(--danger)':'var(--success)')+'">'+(f.pnl>=0?'+':'')+'¥'+Math.abs(f.pnl).toLocaleString('zh-CN',{maximumFractionDigits:0})+'</span></div>'+
+        '<div class="fund-stat-row"><span class="kl">当日涨跌</span><span class="kv" style="color:'+(f.estGszzl>=0?'var(--danger)':'var(--success)')+'">'+(f.estGszzl>=0?'+':'')+f.estGszzl.toFixed(2)+'%</span></div>'+
+        '<div class="fund-stat-row"><span class="kl">持仓盈亏</span><span class="kv" style="color:'+(f.pnl>=0?'var(--danger)':'var(--success)')+'">'+(f.pnl>=0?'+':'-')+'¥'+fmtMoney(Math.abs(f.pnl))+'</span></div>'+
         '<div class="fund-stat-row"><span class="kl">距回本需涨</span><span class="kv" style="color:var(--danger)">'+(f.ret>=0?'已盈利':'+'+((f.needGain)*100).toFixed(2)+'%')+'</span></div>'+
       '</div>'+
-      '<div class="fund-bar-wrap"><div class="fund-bar-labels"><span>净值 ¥'+f.nav.toFixed(2)+(gFundLiveMode==='intraday'?' (估)':'')+'</span><span>成本 ¥'+f.costNav.toFixed(2)+'</span></div><div class="fund-bar-track"><div class="fund-bar-fill" style="width:'+barPct+'%;background:'+barColor+'"></div></div></div>'+
+      '<div class="fund-bar-wrap"><div class="fund-bar-labels"><span>市值 ¥'+fmtMoney(f.curValue)+'</span><span>成本 ¥'+fmtMoney(f.cost)+'</span></div><div class="fund-bar-track"><div class="fund-bar-fill" style="width:'+barPct+'%;background:'+barColor+'"></div></div></div>'+
       '<div class="fund-meta-grid">'+
         '<div class="fund-meta-row"><span class="kl">近1月</span><span class="kv" style="color:'+(f.m1>=0?'var(--danger)':'var(--success)')+'">'+f.m1txt+'</span></div>'+
         '<div class="fund-meta-row"><span class="kl">近1年</span><span class="kv" style="color:'+(f.yr1>=0?'var(--danger)':'var(--success)')+'">'+f.yr1txt+'</span></div>'+
