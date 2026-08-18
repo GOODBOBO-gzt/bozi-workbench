@@ -1322,7 +1322,7 @@ input[type="text"], input[type="number"], input[type="date"], input[type="search
         </div>
         <div class="order-table-wrap" id="orderTableWrap">
           <table class="order-table">
-            <thead><tr><th title="发布日期">日期</th><th title="合作产品">产品</th><th title="发布账号">账号</th><th title="合作报价">报价</th><th title="运营成本">成本</th><th title="返款金额">返款</th><th title="置换价值">置换</th><th title="备注信息">备注</th><th title="发布状态">状态</th><th title="操作">操作</th></tr></thead>
+            <thead><tr><th title="发布日期">日期</th><th title="合作产品">产品</th><th class="acc-col" title="发布账号">账号</th><th title="合作报价">报价</th><th title="运营成本">成本</th><th title="返款金额">返款</th><th title="置换价值">置换</th><th title="备注信息">备注</th><th title="发布状态">状态</th><th title="操作">操作</th></tr></thead>
             <tbody id="orderTableBody"></tbody>
           </table>
         </div>
@@ -2404,11 +2404,18 @@ document.querySelectorAll('#orderFilter .filter-chip').forEach(function(chip) {
 });
 
 // ---- 账号筛选 ----
+// 账号列仅在「全部账号」视图显示；三个具体账号 tab 下隐藏（分开展示即无需账号字段）
+function syncAccountColumn() {
+  var show = currentAccount === 'all';
+  document.querySelectorAll('.acc-col').forEach(function(el) { el.style.display = show ? '' : 'none'; });
+}
+
 document.querySelectorAll('#orderAccountFilter .filter-chip').forEach(function(chip) {
   chip.addEventListener('click', function() {
     document.querySelectorAll('#orderAccountFilter .filter-chip').forEach(function(c) { c.classList.remove('active'); });
     chip.classList.add('active');
     currentAccount = chip.dataset.account;
+    syncAccountColumn();
     renderOrders();
   });
 });
@@ -2526,6 +2533,7 @@ function openOrderModalForDate(dateStr) {
 }
 
 function renderOrders() {
+  syncAccountColumn();
   // 表格/月历切换
   var tableWrap = document.getElementById('orderTableWrap');
   var calWrap = document.getElementById('orderCalendarWrap');
@@ -2567,7 +2575,7 @@ function renderOrders() {
     tbody.innerHTML = sorted.map(function(o) {
       return '<tr><td style="white-space:nowrap"><span class="date-full">'+formatDate(o.date)+'</span><span class="date-short">'+shortOrderDate(o.date)+'</span></td>'+
         '<td style="font-weight:500" title="'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'</td>'+
-        '<td><span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span></td>'+
+        (currentAccount === 'all' ? '<td class="acc-col"><span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span></td>' : '')+
         '<td style="font-weight:600;color:var(--success)">¥'+o.price.toLocaleString()+'</td>'+
         '<td style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</td>'+
         '<td>'+(o.refund>0 ? '<span class="refund-cell '+(o.refundDone?'done':'pending')+'" onclick="toggleRefundStatus(\''+o.id+'\')" title="点击切换返款状态"><span class="refund-amount">¥'+o.refund.toLocaleString()+'</span><span class="refund-check '+(o.refundDone?'checked':'')+'">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span></span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
@@ -2588,7 +2596,7 @@ function renderOrders() {
   } else {
     cardsEl.innerHTML = sorted.map(function(o) {
       return '<div class="order-card-item">'+
-        '<div class="card-row"><div><div class="card-label">'+formatDate(o.date)+'</div><div class="card-value card-brand">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'<span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span></div></div>'+
+        '<div class="card-row"><div><div class="card-label">'+formatDate(o.date)+'</div><div class="card-value card-brand">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+(currentAccount === 'all' ? '<span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span>' : '')+'</div></div>'+
         '<span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></div>'+
         (o.note ? '<div style="margin-top:6px;font-size:13px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '')+
         '<div class="order-detail-expand" id="orderDetail-'+o.id+'">'+
