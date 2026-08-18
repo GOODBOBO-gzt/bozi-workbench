@@ -3,9 +3,12 @@
 """
 基金每日自动更新脚本（WorkBuddy 自动化 14:30/14:45/15:30 定时运行）
 
-【核心约束】市值(value)与收益率(ret) 以用户最新报告为准，钉死不变。
-本脚本只刷新「净值 / 盘中估值」等信号字段（用于展示与当日策略信号），
-绝不动 value / ret / cost，也绝不重算总市值/总盈亏（它们由用户报告决定）。
+【模型】读取 fund-live.json 中的 shares(份额) 与 investedCost(投入本金)，
+用当日最新净值(nav)或盘中实时估值(gsz) 重算市值：
+    curValue = shares × price
+    ret      = curValue / investedCost - 1
+    pnl      = curValue - investedCost
+总市值/总盈亏随每日涨跌自然更新（不钉死、不反推份额）。
 """
 import json
 import os
@@ -107,6 +110,8 @@ def main():
     nav_dates = []
     for f in live["funds"]:
         code = f["code"]
+        shares = f["shares"]
+        investedCost = f["investedCost"]
         try:
             nav_info = fetch_nav(code)
         except Exception as e:
@@ -126,7 +131,7 @@ def main():
         else:
             price, today_chg, mode, asof = nav, nav_info["dayChg"], "nav", nav_date
 
-        # ===== 只刷新净值/信号字段；市值/收益率/成本 钉死不变 =====
+        # 份额 × 当日净值/估值 重算市值（随每日涨跌更新）
         f["nav"] = nav
         f["navDate"] = nav_date
         f["dayChg"] = nav_info["dayChg"]
@@ -138,15 +143,25 @@ def main():
         f["mode"] = mode
         f["todayChg"] = today_chg
         f["estGszzl"] = today_chg
-        # 盈亏由钉死值重算（value-cost 恒定）
-        f["pnl"] = round(f["value"] - f["cost"], 2)
+        f["costNav"] = (investedCost / shares) if shares else 0
+        f["curValue"] = round(shares * price, 2)
+        f["ret"] = (f["curValue"] / investedCost - 1) if investedCost else 0
+        f["pnl"] = round(f["curValue"] - investedCost, 2)
         adv = advice(f)
         f["advice"] = adv[0]
         f["adviceReason"] = adv[1]
         if nav_date:
             nav_dates.append(nav_date)
 
-    # 汇总保持钉死（totalValue/totalCost/totalPnl/totalRet 不重算）
+    # 汇总随每日涨跌重算
+    totalCost = sum(f["investedCost"] for f in live["funds"])
+    totalValue = sum(f["curValue"] for f in live["funds"])
+    totalPnl = round(totalValue - totalCost, 2)
+    totalRet = (totalPnl / totalCost) if totalCost else 0
+    live["totalCost"] = round(totalCost, 2)
+    live["totalValue"] = round(totalValue, 2)
+    live["totalPnl"] = totalPnl
+    live["totalRet"] = round(totalRet, 6)
     live["updatedAt"] = beijing_now().strftime("%Y-%m-%d %H:%M")
     live["navDate"] = max(nav_dates) if nav_dates else live.get("navDate", "")
     live["mode"] = "intraday" if any(f["mode"] == "intraday" for f in live["funds"]) else "nav"
@@ -154,8 +169,8 @@ def main():
     live["intradayAsOf"] = next((f["gztime"] for f in live["funds"] if f["mode"] == "intraday"), None)
 
     json.dump(live, open(LIVE_PATH, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-    print("OK 钉死市值 mode=%s navDate=%s totalRet=%.2f%% totalPnl=%d"
-          % (live["mode"], live["navDate"], live["totalRet"] * 100, live["totalPnl"]))
+    print("OK 份额×净值重算 mode=%s navDate=%s totalRet=%.2f%% totalPnl=%d"
+          % (live["mode"], live["navDate"], totalRet * 100, totalPnl))
 
 
 if __name__ == "__main__":
