@@ -416,6 +416,7 @@ body::before {
 .order-card-item .card-label { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
 .order-card-item .card-value { font-size: 14px; color: var(--text-primary); font-weight: 500; }
 .order-card-item .card-brand { font-size: 16px; font-weight: 600; }
+.order-card-item .card-note { font-size: 16px; line-height: 1.5; }
 .order-card-item .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
 .order-card-item .card-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
 /* 返款状态 */
@@ -939,6 +940,7 @@ body::before {
   }
   .order-card-item:active { transform: scale(0.985); }
   .order-card-item .card-brand { font-size: 17px; }
+  .order-card-item .card-note { font-size: 17px; }
 
   /* ---- 每周行程移动端 ---- */
   .weekly-grid { grid-template-columns: 36px repeat(5, 1fr); border-radius: 12px; }
@@ -2598,7 +2600,7 @@ function renderOrders() {
       return '<div class="order-card-item">'+
         '<div class="card-row"><div><div class="card-label">'+formatDate(o.date)+'</div><div class="card-value card-brand">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+(currentAccount === 'all' ? '<span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span>' : '')+'</div></div>'+
         '<span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></div>'+
-        (o.note ? '<div style="margin-top:6px;font-size:13px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '')+
+        (o.note ? '<div class="card-note" style="margin-top:6px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '')+
         '<div class="order-detail-expand" id="orderDetail-'+o.id+'">'+
           '<div class="card-grid">'+
             '<div><div class="card-label">报价</div><div class="card-value" style="color:var(--success);font-weight:600">¥'+o.price.toLocaleString()+'</div></div>'+
@@ -2608,10 +2610,7 @@ function renderOrders() {
           (o.barter>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">置换价值</div><div class="card-value" style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</div></div></div>' : '')+
         '</div>'+
         '<div class="card-actions">'+
-          '<button class="btn btn-ghost btn-sm" style="flex:1" onclick="toggleOrderStatus(\''+o.id+'\')">'+(o.done?'标记待发布':'标记完成')+'</button>'+
           '<button class="btn btn-ghost btn-sm order-expand-btn" id="orderExpandBtn-'+o.id+'" onclick="toggleOrderDetail(\''+o.id+'\')">展开详情</button>'+
-          '<button type="button" class="btn btn-ghost btn-sm" data-order-id="'+escapeHtml(String(o.id))+'" onclick="openOrderModalFromButton(this)">编辑</button>'+
-          '<button class="btn btn-danger btn-sm" onclick="deleteOrder(\''+o.id+'\')">删除</button>'+
         '</div></div>';
     }).join('');
   }
