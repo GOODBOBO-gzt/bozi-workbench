@@ -1324,7 +1324,7 @@ input[type="text"], input[type="number"], input[type="date"], input[type="search
         </div>
         <div class="order-table-wrap" id="orderTableWrap">
           <table class="order-table">
-            <thead><tr><th title="发布日期">日期</th><th title="合作产品">产品</th><th class="acc-col" title="发布账号">账号</th><th title="合作报价">报价</th><th title="运营成本">成本</th><th title="返款金额">返款</th><th title="置换价值">置换</th><th title="备注信息">备注</th><th title="发布状态">状态</th><th class="op-col" title="操作">操作</th></tr></thead>
+            <thead><tr><th title="发布日期">日期</th><th title="合作产品">产品</th><th class="acc-col" title="发布账号">账号</th><th title="合作报价">报价</th><th title="运营成本">成本</th><th title="返款金额">返款</th><th title="置换价值">置换</th><th title="备注信息">备注</th><th class="status-col" title="发布状态">状态</th><th class="op-col" title="操作">操作</th></tr></thead>
             <tbody id="orderTableBody"></tbody>
           </table>
         </div>
@@ -2406,10 +2406,10 @@ document.querySelectorAll('#orderFilter .filter-chip').forEach(function(chip) {
 });
 
 // ---- 账号筛选 ----
-// 账号列仅在「全部账号」视图显示；三个具体账号 tab 下隐藏（分开展示即无需账号字段）
+// 账号列与状态列仅在「全部账号」视图显示；三个具体账号 tab 下隐藏（分开展示即无需账号/状态字段）
 function syncAccountColumn() {
   var show = currentAccount === 'all';
-  document.querySelectorAll('.acc-col, .op-col').forEach(function(el) { el.style.display = show ? '' : 'none'; });
+  document.querySelectorAll('.acc-col, .op-col, .status-col').forEach(function(el) { el.style.display = show ? '' : 'none'; });
 }
 
 document.querySelectorAll('#orderAccountFilter .filter-chip').forEach(function(chip) {
@@ -2583,7 +2583,7 @@ function renderOrders() {
         '<td>'+(o.refund>0 ? '<span class="refund-cell '+(o.refundDone?'done':'pending')+'" onclick="toggleRefundStatus(\''+o.id+'\')" title="点击切换返款状态"><span class="refund-amount">¥'+o.refund.toLocaleString()+'</span><span class="refund-check '+(o.refundDone?'checked':'')+'">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span></span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
         '<td>'+(o.barter>0 ? '<span style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
         '<td style="color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHtml(o.note||'')+'">'+ (o.note ? escapeHtml(o.note) : '<span style="opacity:0.4">-</span>') +'</td>'+
-        '<td><span class="order-status '+(o.done?'done':'pending')+'" title="'+(o.done?'已完成':'待发布')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></td>'+
+        '<td class="status-col"><span class="order-status '+(o.done?'done':'pending')+'" title="'+(o.done?'已完成':'待发布')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></td>'+
         (currentAccount === 'all' ? '<td class="op-col"><div class="order-actions">'+
           '<button class="btn btn-icon btn-ghost btn-sm" onclick="toggleOrderStatus(\''+o.id+'\')" title="'+(o.done?'标记待发布':'标记完成')+'">'+(o.done?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 0118 0M3 12a9 9 0 1018 0"/></svg>':'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>')+'</button>'+
           '<button type="button" class="btn btn-icon btn-ghost btn-sm" data-order-id="'+escapeHtml(String(o.id))+'" onclick="openOrderModalFromButton(this)" title="编辑"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>'+
@@ -2599,7 +2599,7 @@ function renderOrders() {
     cardsEl.innerHTML = sorted.map(function(o) {
       return '<div class="order-card-item">'+
         '<div class="card-row"><div><div class="card-label">'+formatDate(o.date)+'</div><div class="card-value card-brand">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+(currentAccount === 'all' ? '<span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span>' : '')+'</div></div>'+
-        '<span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></div>'+
+        (currentAccount === 'all' ? '<span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span>' : '')+'</div>'+
         (o.note ? '<div class="card-note" style="margin-top:6px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '')+
         '<div class="order-detail-expand" id="orderDetail-'+o.id+'">'+
           '<div class="card-grid">'+
