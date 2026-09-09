@@ -2415,8 +2415,9 @@ document.querySelectorAll('#orderFilter .filter-chip').forEach(function(chip) {
 // ---- 账号筛选 ----
 // 账号列与状态列仅在「全部账号」视图显示；三个具体账号 tab 下隐藏（分开展示即无需账号/状态字段）
 function syncAccountColumn() {
-  var show = currentAccount === 'all';
-  document.querySelectorAll('.acc-col, .op-col, .status-col').forEach(function(el) { el.style.display = show ? '' : 'none'; });
+  var showAcc = currentAccount === 'all';
+  // 账号列：仅「全部账号」显示；状态列与操作列在 PC 端始终显示（移动端表格整体隐藏，视觉不受影响）
+  document.querySelectorAll('.acc-col').forEach(function(el) { el.style.display = showAcc ? '' : 'none'; });
 }
 
 document.querySelectorAll('#orderAccountFilter .filter-chip').forEach(function(chip) {
@@ -2448,12 +2449,12 @@ function orderRowHtml(o){
     '<td>'+(o.refund>0 ? '<span class="refund-cell '+(o.refundDone?'done':'pending')+'" onclick="toggleRefundStatus(\''+o.id+'\')" title="点击切换返款状态"><span class="refund-amount">¥'+o.refund.toLocaleString()+'</span><span class="refund-check '+(o.refundDone?'checked':'')+'">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span></span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
     '<td>'+(o.barter>0 ? '<span style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
     '<td style="color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHtml(o.note||'')+'">'+ (o.note ? escapeHtml(o.note) : '<span style="opacity:0.4">-</span>') +'</td>'+
-    (currentAccount === 'all' ? '<td class="status-col"><span class="order-status '+(o.done?'done':'pending')+'" title="'+(o.done?'已完成':'待发布')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></td>' : '')+
-    (currentAccount === 'all' ? '<td class="op-col"><div class="order-actions">'+
+    '<td class="status-col"><span class="order-status '+(o.done?'done':'pending')+'" title="'+(o.done?'已完成':'待发布')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></td>'+
+    '<td class="op-col"><div class="order-actions">'+
       '<button class="btn btn-icon btn-ghost btn-sm" onclick="toggleOrderStatus(\''+o.id+'\')" title="'+(o.done?'标记待发布':'标记完成')+'">'+(o.done?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 0118 0M3 12a9 9 0 1018 0"/></svg>':'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>')+'</button>'+
       '<button type="button" class="btn btn-icon btn-ghost btn-sm" data-order-id="'+escapeHtml(String(o.id))+'" onclick="openOrderModalFromButton(this)" title="编辑"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>'+
       '<button class="btn btn-icon btn-danger btn-sm" onclick="deleteOrder(\''+o.id+'\')" title="删除"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>'+
-    '</div></td>' : '')+'</tr>';
+    '</div></td>' + '</tr>';
 }
 function orderCardHtml(o){
   return '<div class="order-card-item">'+
@@ -2621,13 +2622,13 @@ function renderOrders() {
 
   var tbody = document.getElementById('orderTableBody');
   if (sorted.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px;color:var(--text-muted)">暂无商单排期记录</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="'+ (currentAccount==='all'?10:9) +'" style="text-align:center;padding:48px;color:var(--text-muted)">暂无商单排期记录</td></tr>';
   } else {
     var _g = {}, _order = [];
     sorted.forEach(function(o){ var _ym = monthKeyOf(o.date); if(!_g[_ym]){ _g[_ym]=[]; _order.push(_ym); } _g[_ym].push(o); });
     _order.sort(function(a,b){ return a<b?1:(a>b?-1:0); });
     var _cur = currentMonthKey();
-    var _cs = (currentAccount === 'all') ? 10 : 7;
+    var _cs = (currentAccount === 'all') ? 10 : 9;
     var _h = '';
     _order.forEach(function(_ym){
       var _exp = (_ym in monthExpand) ? monthExpand[_ym] : (_ym === _cur);
