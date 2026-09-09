@@ -401,6 +401,13 @@ body::before {
 .order-table td { padding: 14px 16px; font-size: 14px; color: var(--text-primary); border-bottom: 1px solid var(--divider); }
 .order-table tr:last-child td { border-bottom: none; }
 .order-table tbody tr:hover { background: var(--accent-soft); }
+.order-table .month-group-row td { background: rgba(92,184,154,0.10); cursor: pointer; padding: 11px 16px; }
+.order-table .month-group-row:hover td { background: rgba(92,184,154,0.18); }
+.month-toggle { display: inline-block; width: 16px; color: #5cb89a; font-weight: 700; }
+.month-label { font-weight: 700; color: #5b4334; margin-left: 4px; }
+.month-count { margin-left: 10px; font-size: 12px; color: #8a7a6d; }
+.order-cards-mobile .month-group-card { display: flex; align-items: center; gap: 6px; padding: 11px 14px; margin: 16px 0 6px; background: rgba(92,184,154,0.12); border-radius: 12px; cursor: pointer; font-weight: 700; color: #5b4334; }
+.order-cards-mobile .month-group-card:hover { background: rgba(92,184,154,0.20); }
 .order-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; }
 .order-status .dot { width: 7px; height: 7px; border-radius: 50%; }
 .order-status.pending { color: var(--warning); }
@@ -2424,6 +2431,48 @@ document.querySelectorAll('#orderAccountFilter .filter-chip').forEach(function(c
 
 // ---- 视图切换 ----
 var orderView = 'table';
+
+// 商单按月分组：当月默认展开，其余月份（含上月及更早）默认折叠，点击月份标题展开/收起
+var monthExpand = {};
+function monthKeyOf(ds){ var p=String(ds||'').split('-'); return p.length>=2 ? (p[0]+'-'+(p[1].length===1?'0'+p[1]:p[1])) : '0000-00'; }
+function monthLabelOf(ym){ var a=ym.split('-'); return (a[0]&&a[0]!=='0000') ? (a[0]+'年'+parseInt(a[1],10)+'月') : '未标注月份'; }
+function currentMonthKey(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function isPrevMonth(ym,cur){ if(ym==='0000-00') return false; var a=ym.split('-'),b=cur.split('-'); var ay=+a[0],am=+a[1],by=+b[0],bm=+b[1]; if(am===1) return (ay===by-1)&&(bm===12); return (ay===by)&&(bm===am+1); }
+function toggleMonthGroup(ym){ var cur=monthExpand[ym]; if(cur===undefined) cur=(ym===currentMonthKey()); monthExpand[ym]=!cur; renderOrders(); }
+function orderRowHtml(o){
+  return '<tr><td style="white-space:nowrap"><span class="date-full">'+formatDate(o.date)+'</span><span class="date-short">'+shortOrderDate(o.date)+'</span></td>'+
+    '<td style="font-weight:500" title="'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'</td>'+
+    (currentAccount === 'all' ? '<td class="acc-col"><span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span></td>' : '')+
+    '<td style="font-weight:600;color:var(--success)">¥'+o.price.toLocaleString()+'</td>'+
+    '<td style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</td>'+
+    '<td>'+(o.refund>0 ? '<span class="refund-cell '+(o.refundDone?'done':'pending')+'" onclick="toggleRefundStatus(\''+o.id+'\')" title="点击切换返款状态"><span class="refund-amount">¥'+o.refund.toLocaleString()+'</span><span class="refund-check '+(o.refundDone?'checked':'')+'">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span></span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
+    '<td>'+(o.barter>0 ? '<span style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
+    '<td style="color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHtml(o.note||'')+'">'+ (o.note ? escapeHtml(o.note) : '<span style="opacity:0.4">-</span>') +'</td>'+
+    (currentAccount === 'all' ? '<td class="status-col"><span class="order-status '+(o.done?'done':'pending')+'" title="'+(o.done?'已完成':'待发布')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></td>' : '')+
+    (currentAccount === 'all' ? '<td class="op-col"><div class="order-actions">'+
+      '<button class="btn btn-icon btn-ghost btn-sm" onclick="toggleOrderStatus(\''+o.id+'\')" title="'+(o.done?'标记待发布':'标记完成')+'">'+(o.done?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 0118 0M3 12a9 9 0 1018 0"/></svg>':'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>')+'</button>'+
+      '<button type="button" class="btn btn-icon btn-ghost btn-sm" data-order-id="'+escapeHtml(String(o.id))+'" onclick="openOrderModalFromButton(this)" title="编辑"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>'+
+      '<button class="btn btn-icon btn-danger btn-sm" onclick="deleteOrder(\''+o.id+'\')" title="删除"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>'+
+    '</div></td>' : '')+'</tr>';
+}
+function orderCardHtml(o){
+  return '<div class="order-card-item">'+
+    '<div class="card-row"><div><div class="card-label">'+formatDate(o.date)+'</div><div class="card-value card-brand">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+(currentAccount === 'all' ? '<span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span>' : '')+'</div></div>'+
+    (currentAccount === 'all' ? '<span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span>' : '')+'</div>'+
+    (o.note ? '<div class="card-note" style="margin-top:6px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '')+
+    '<div class="order-detail-expand" id="orderDetail-'+o.id+'">'+
+      '<div class="card-grid">'+
+        '<div><div class="card-label">报价</div><div class="card-value" style="color:var(--success);font-weight:600">¥'+o.price.toLocaleString()+'</div></div>'+
+        '<div><div class="card-label">成本</div><div class="card-value" style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</div></div>'+
+      '</div>'+
+      (o.refund>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">返款</div><div class="card-value" style="color:'+(o.refundDone?'var(--success)':'var(--text-muted)')+';font-weight:600">¥'+o.refund.toLocaleString()+'</div></div><div style="display:flex;align-items:center;gap:6px;align-self:flex-end"><span class="refund-check '+(o.refundDone?'checked':'')+'" style="width:22px;height:22px;border-radius:7px" onclick="event.stopPropagation();toggleRefundStatus(\''+o.id+'\')">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span><span style="font-size:12px;color:var(--text-muted)">'+(o.refundDone?'已返款':'待返款')+'</span></div></div>' : '')+
+      (o.barter>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">置换价值</div><div class="card-value" style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</div></div></div>' : '')+
+    '</div>'+
+    '<div class="card-actions">'+
+      '<button class="btn btn-ghost btn-sm order-expand-btn" id="orderExpandBtn-'+o.id+'" onclick="toggleOrderDetail(\''+o.id+'\')">展开详情</button>'+
+    '</div></div>';
+}
+
 document.querySelectorAll('#orderViewToggle .view-chip').forEach(function(chip) {
   chip.addEventListener('click', function() {
     document.querySelectorAll('#orderViewToggle .view-chip').forEach(function(c) { c.classList.remove('active'); });
@@ -2574,45 +2623,35 @@ function renderOrders() {
   if (sorted.length === 0) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px;color:var(--text-muted)">暂无商单排期记录</td></tr>';
   } else {
-    tbody.innerHTML = sorted.map(function(o) {
-      return '<tr><td style="white-space:nowrap"><span class="date-full">'+formatDate(o.date)+'</span><span class="date-short">'+shortOrderDate(o.date)+'</span></td>'+
-        '<td style="font-weight:500" title="'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+'</td>'+
-        (currentAccount === 'all' ? '<td class="acc-col"><span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span></td>' : '')+
-        '<td style="font-weight:600;color:var(--success)">¥'+o.price.toLocaleString()+'</td>'+
-        '<td style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</td>'+
-        '<td>'+(o.refund>0 ? '<span class="refund-cell '+(o.refundDone?'done':'pending')+'" onclick="toggleRefundStatus(\''+o.id+'\')" title="点击切换返款状态"><span class="refund-amount">¥'+o.refund.toLocaleString()+'</span><span class="refund-check '+(o.refundDone?'checked':'')+'">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span></span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
-        '<td>'+(o.barter>0 ? '<span style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</span>' : '<span style="opacity:0.3">-</span>')+'</td>'+
-        '<td style="color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHtml(o.note||'')+'">'+ (o.note ? escapeHtml(o.note) : '<span style="opacity:0.4">-</span>') +'</td>'+
-        (currentAccount === 'all' ? '<td class="status-col"><span class="order-status '+(o.done?'done':'pending')+'" title="'+(o.done?'已完成':'待发布')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span></td>' : '')+
-        (currentAccount === 'all' ? '<td class="op-col"><div class="order-actions">'+
-          '<button class="btn btn-icon btn-ghost btn-sm" onclick="toggleOrderStatus(\''+o.id+'\')" title="'+(o.done?'标记待发布':'标记完成')+'">'+(o.done?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 0118 0M3 12a9 9 0 1018 0"/></svg>':'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>')+'</button>'+
-          '<button type="button" class="btn btn-icon btn-ghost btn-sm" data-order-id="'+escapeHtml(String(o.id))+'" onclick="openOrderModalFromButton(this)" title="编辑"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>'+
-          '<button class="btn btn-icon btn-danger btn-sm" onclick="deleteOrder(\''+o.id+'\')" title="删除"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>'+
-        '</div></td>' : '')+'</tr>';
-    }).join('');
+    var _g = {}, _order = [];
+    sorted.forEach(function(o){ var _ym = monthKeyOf(o.date); if(!_g[_ym]){ _g[_ym]=[]; _order.push(_ym); } _g[_ym].push(o); });
+    _order.sort(function(a,b){ return a<b?1:(a>b?-1:0); });
+    var _cur = currentMonthKey();
+    var _cs = (currentAccount === 'all') ? 10 : 7;
+    var _h = '';
+    _order.forEach(function(_ym){
+      var _exp = (_ym in monthExpand) ? monthExpand[_ym] : (_ym === _cur);
+      _h += '<tr class="month-group-row" data-ym="'+_ym+'" onclick="toggleMonthGroup(\''+_ym+'\')"><td colspan="'+_cs+'"><span class="month-toggle">'+( _exp?'▾':'▸')+'</span><span class="month-label">'+monthLabelOf(_ym)+'</span><span class="month-count">'+_g[_ym].length+' 条'+( _ym===_cur?' · 本月':(isPrevMonth(_ym,_cur)?' · 上月':''))+'</span></td></tr>';
+      if(_exp){ _g[_ym].forEach(function(o){ _h += orderRowHtml(o); }); }
+    });
+    tbody.innerHTML = _h;
   }
 
   var cardsEl = document.getElementById('orderCardsMobile');
   if (sorted.length === 0) {
     cardsEl.innerHTML = '<div style="text-align:center;padding:48px;color:var(--text-muted)">暂无商单排期记录</div>';
   } else {
-    cardsEl.innerHTML = sorted.map(function(o) {
-      return '<div class="order-card-item">'+
-        '<div class="card-row"><div><div class="card-label">'+formatDate(o.date)+'</div><div class="card-value card-brand">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+(currentAccount === 'all' ? '<span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span>' : '')+'</div></div>'+
-        (currentAccount === 'all' ? '<span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span>' : '')+'</div>'+
-        (o.note ? '<div class="card-note" style="margin-top:6px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '')+
-        '<div class="order-detail-expand" id="orderDetail-'+o.id+'">'+
-          '<div class="card-grid">'+
-            '<div><div class="card-label">报价</div><div class="card-value" style="color:var(--success);font-weight:600">¥'+o.price.toLocaleString()+'</div></div>'+
-            '<div><div class="card-label">成本</div><div class="card-value" style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</div></div>'+
-          '</div>'+
-          (o.refund>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">返款</div><div class="card-value" style="color:'+(o.refundDone?'var(--success)':'var(--text-muted)')+';font-weight:600">¥'+o.refund.toLocaleString()+'</div></div><div style="display:flex;align-items:center;gap:6px;align-self:flex-end"><span class="refund-check '+(o.refundDone?'checked':'')+'" style="width:22px;height:22px;border-radius:7px" onclick="event.stopPropagation();toggleRefundStatus(\''+o.id+'\')">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span><span style="font-size:12px;color:var(--text-muted)">'+(o.refundDone?'已返款':'待返款')+'</span></div></div>' : '')+
-          (o.barter>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">置换价值</div><div class="card-value" style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</div></div></div>' : '')+
-        '</div>'+
-        '<div class="card-actions">'+
-          '<button class="btn btn-ghost btn-sm order-expand-btn" id="orderExpandBtn-'+o.id+'" onclick="toggleOrderDetail(\''+o.id+'\')">展开详情</button>'+
-        '</div></div>';
-    }).join('');
+    var _g2 = {}, _order2 = [];
+    sorted.forEach(function(o){ var _ym = monthKeyOf(o.date); if(!_g2[_ym]){ _g2[_ym]=[]; _order2.push(_ym); } _g2[_ym].push(o); });
+    _order2.sort(function(a,b){ return a<b?1:(a>b?-1:0); });
+    var _cur2 = currentMonthKey();
+    var _c = '';
+    _order2.forEach(function(_ym){
+      var _exp = (_ym in monthExpand) ? monthExpand[_ym] : (_ym === _cur2);
+      _c += '<div class="month-group-card" data-ym="'+_ym+'" onclick="toggleMonthGroup(\''+_ym+'\')"><span class="month-toggle">'+( _exp?'▾':'▸')+'</span><span class="month-label">'+monthLabelOf(_ym)+'</span><span class="month-count">'+_g2[_ym].length+' 条'+( _ym===_cur2?' · 本月':(isPrevMonth(_ym,_cur2)?' · 上月':''))+'</span></div>';
+      if(_exp){ _g2[_ym].forEach(function(o){ _c += orderCardHtml(o); }); }
+    });
+    cardsEl.innerHTML = _c;
   }
 }
 
