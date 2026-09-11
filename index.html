@@ -2460,7 +2460,7 @@ function orderCardHtml(o){
   return '<div class="order-card-item">'+
     '<div class="card-row"><div><div class="card-label">'+formatDate(o.date)+'</div><div class="card-value card-brand">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+(currentAccount === 'all' ? '<span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span>' : '')+'</div></div>'+
     (currentAccount === 'all' ? '<span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span>' : '')+'</div>'+
-    (o.note ? '<div class="card-note" style="margin-top:6px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '')+
+    (currentAccount !== 'all' && o.note ? '<div class="card-note" style="margin-top:6px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '')+
     '<div class="order-detail-expand" id="orderDetail-'+o.id+'">'+
       '<div class="card-grid">'+
         '<div><div class="card-label">报价</div><div class="card-value" style="color:var(--success);font-weight:600">¥'+o.price.toLocaleString()+'</div></div>'+
@@ -2469,9 +2469,9 @@ function orderCardHtml(o){
       (o.refund>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">返款</div><div class="card-value" style="color:'+(o.refundDone?'var(--success)':'var(--text-muted)')+';font-weight:600">¥'+o.refund.toLocaleString()+'</div></div><div style="display:flex;align-items:center;gap:6px;align-self:flex-end"><span class="refund-check '+(o.refundDone?'checked':'')+'" style="width:22px;height:22px;border-radius:7px" onclick="event.stopPropagation();toggleRefundStatus(\''+o.id+'\')">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span><span style="font-size:12px;color:var(--text-muted)">'+(o.refundDone?'已返款':'待返款')+'</span></div></div>' : '')+
       (o.barter>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">置换价值</div><div class="card-value" style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</div></div></div>' : '')+
     '</div>'+
-    '<div class="card-actions">'+
+    (currentAccount !== 'all' ? '<div class="card-actions">'+
       '<button class="btn btn-ghost btn-sm order-expand-btn" id="orderExpandBtn-'+o.id+'" onclick="toggleOrderDetail(\''+o.id+'\')">展开详情</button>'+
-    '</div></div>';
+    '</div>' : '')+'</div>';
 }
 
 document.querySelectorAll('#orderViewToggle .view-chip').forEach(function(chip) {
