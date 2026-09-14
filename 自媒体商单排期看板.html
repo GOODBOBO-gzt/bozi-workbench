@@ -127,12 +127,18 @@
     table.cmp,table.ord{display:block;min-width:0;width:100%;}
     table.cmp thead,table.ord thead{display:none;}
     table.cmp tbody,table.ord tbody{display:block;}
-    table.cmp tr,table.ord tr{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 2px;margin:12px 0;box-shadow:var(--shadow);}
-    table.cmp td,table.ord td{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:right;padding:9px 12px;border-bottom:1px solid var(--line);}
+    table.cmp tr,table.ord tr{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 2px;margin:12px 0;box-shadow:var(--shadow);}
+    /* 每行：左侧定宽标签 + 右侧值；值区允许长中文换行，绝不压到标签 */
+    table.cmp td,table.ord td{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:right;padding:9px 12px;border-bottom:1px solid var(--line);overflow-wrap:anywhere;word-break:break-word;}
     table.cmp td:last-child,table.ord td:last-child{border-bottom:none;}
-    table.cmp td::before,table.ord td::before{content:attr(data-label);font-size:12px;font-weight:600;color:var(--muted);text-align:left;flex:0 0 auto;}
-    /* 操作按钮行靠右 */
-    table.ord td[data-label="操作"]{justify-content:flex-end;}
+    table.cmp td::before,table.ord td::before{content:attr(data-label);flex:0 0 78px;font-size:12px;font-weight:600;color:var(--muted);text-align:left;}
+    table.cmp td > *,table.ord td > *{min-width:0;}
+    /* 数值列不换行，避免「返款」回行 */
+    table.cmp td.num,table.ord td.num,table.cmp td.bar-cell{white-space:nowrap;}
+    /* 对比看板进度条：移动端只保留数字，隐藏色条防重叠 */
+    table.cmp td.bar-cell .bar-track{display:none;}
+    table.cmp td.bar-cell .bar-num{position:static;}
+    /* 操作按钮行靠右（已是 space-between，按钮天然靠右） */
     /* 账号头部竖排、占满 */
     .acct-head{flex-direction:column;align-items:stretch;gap:10px;}
     .acct-kpis{width:100%;}
@@ -359,7 +365,7 @@ function renderList(){
       <td class="num" data-label="返款">${money(o.rebate)}</td>
       <td class="num" data-label="置换">${o.exchange?money(o.exchange):'—'}</td>
       <td data-label="状态"><span class="badge ${o.status==='done'?'done':'pending'}">${o.status==='done'?'已完成':'待发布'}</span></td>
-      <td class="note" data-label="备注">${escapeHtml(o.note||'')}</td>
+      <td class="note" data-label="备注">${o.note?escapeHtml(o.note):'—'}</td>
       <td data-label="操作"><div class="row-act">
         <button class="btn ghost sm" onclick="editOrder(${o.id})">改</button>
         <button class="btn ghost sm" onclick="delOrder(${o.id})">删</button>
