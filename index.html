@@ -423,14 +423,15 @@ body::before {
 
 /* 移动端订单卡片 */
 .order-cards-mobile { display: none; flex-direction: column; gap: 12px; }
-.order-card-item { padding: 18px; border-radius: 16px; background: var(--card-bg); border: 1px solid var(--glass-border-light); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.3); }
+.order-card-item { width: 100%; padding: 18px; border-radius: 16px; background: var(--card-bg); border: 1px solid var(--glass-border-light); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.3); }
 .order-card-item .card-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 12px; }
 .order-card-item .card-label { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
 .order-card-item .card-value { font-size: 14px; color: var(--text-primary); font-weight: 500; }
-.order-card-item .card-brand { font-size: 16px; font-weight: 600; }
-.order-card-item .card-note { font-size: 16px; line-height: 1.5; }
+.order-card-item .card-brand { font-size: 16px; font-weight: 600; word-break: break-word; line-height: 1.4; }
+.order-card-item .card-note { font-size: 14px; line-height: 1.5; word-break: break-word; }
 .order-card-item .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
-.order-card-item .card-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
+.order-card-item .card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
+.order-card-item .card-actions .btn { flex: 1 1 auto; min-width: 64px; justify-content: center; font-size: 12px; padding: 7px 10px; }
 /* 返款状态 */
 .order-detail-expand { max-height: 0; overflow: hidden; transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.3s ease; opacity: 0; }
 .order-detail-expand.open { max-height: 300px; opacity: 1; margin-top: 12px; }
@@ -971,42 +972,29 @@ body::before {
   .first-load-banner .flb-content { font-size: 11px; gap: 8px; }
   .order-card-item .card-value { font-size: 15px; }
 
-  /* ---- 移动端商单表格：所有字段在一屏内横向完整展示 ---- */
-  .order-table { table-layout: fixed; }
-  .order-table thead th {
-    padding: 8px 2px; font-size: 10px; letter-spacing: 0; text-transform: none;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* ---- 移动端商单：默认显示卡片，表格作为可横向滚动的兜底 ---- */
+  .order-table-wrap { display: none; }
+  .order-cards-mobile { display: flex; gap: 10px; width: 100%; }
+  .order-card-item {
+    width: 100%; padding: 16px; border-radius: 18px;
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    box-shadow: 0 6px 24px rgba(140, 112, 88, 0.1), inset 0 1px 0 rgba(255,255,255,0.3);
+    transition: transform 0.2s ease;
   }
-  .order-table tbody td {
-    padding: 7px 2px; font-size: 10px; line-height: 1.3;
-    white-space: normal; word-break: break-word;
-  }
-  /* 移动端保留 9 列：日期/产品/账号/报价/成本/返款/置换/备注/操作；状态列仍隐藏 */
-  .order-table th:nth-child(1), .order-table td:nth-child(1) { width: 9%; white-space: nowrap; }
-  .order-table th:nth-child(2), .order-table td:nth-child(2) { width: 15%; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 0 !important; }
-  .order-table th:nth-child(3), .order-table td:nth-child(3) { width: 6%; white-space: nowrap; }
-  .order-table th:nth-child(4), .order-table td:nth-child(4) { width: 10%; }
-  .order-table th:nth-child(5), .order-table td:nth-child(5) { width: 9%; }
-  .order-table th:nth-child(6), .order-table td:nth-child(6) { width: 11%; }
-  .order-table th:nth-child(7), .order-table td:nth-child(7) { width: 9%; }
-  .order-table th:nth-child(8), .order-table td:nth-child(8) { width: 19% !important; max-width: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
-  .order-table th:nth-child(9), .order-table td:nth-child(9) { display: none; }
-  .order-table th:nth-child(10), .order-table td:nth-child(10) { width: 12%; }
-  /* 移动端日期简化 7.31、账号简化 大/小 */
+  .order-card-item:active { transform: scale(0.985); }
+  .order-card-item .card-brand { font-size: 16px; line-height: 1.35; word-break: break-word; }
+  .order-card-item .card-note { font-size: 13px; line-height: 1.45; word-break: break-word; }
+  .order-card-item .card-value { font-size: 14px; }
+  .order-card-item .card-actions { gap: 6px; }
+  .order-card-item .card-actions .btn { flex: 1 1 0; min-width: 56px; padding: 6px 8px; font-size: 12px; }
+  /* 若因特殊原因表格仍出现，不要硬塞，改为横向滚动 */
+  .order-table-wrap[style*="block"], .order-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .order-table { min-width: 760px; }
   .order-table .date-full { display: none; }
   .order-table .date-short { display: inline; }
   .order-table .acc-full { display: none; }
   .order-table .acc-short { display: inline; }
-  /* 移动端操作列仅保留编辑和删除，隐藏“标记完成” */
-  .order-table .order-actions > button:first-child { display: none; }
-  .order-table .account-badge { font-size: 9px; padding: 1px 4px; border-radius: 6px; }
-  .order-table .order-status { font-size: 10px; gap: 3px; }
-  .order-table .order-status .dot { width: 7px; height: 7px; }
-  .order-table .order-actions { gap: 2px; justify-content: center; }
-  .order-table .btn-icon { width: 20px; height: 20px; padding: 2px; }
-  .order-table .btn-icon svg { width: 13px; height: 13px; }
-  .order-table .refund-cell { padding: 2px 3px; gap: 2px; font-size: 10px; }
-  .order-table .refund-check { width: 14px; height: 14px; }
 
   /* ---- 月历 ---- */
   .order-calendar-wrap {
@@ -2464,21 +2452,31 @@ function orderRowHtml(o){
     '</div></td>' + '</tr>';
 }
 function orderCardHtml(o){
+  var brand = escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''));
+  var accBadge = currentAccount === 'all' ? '<span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span>' : '';
+  var noteLine = o.note ? '<div class="card-note" style="margin-top:6px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '';
   return '<div class="order-card-item">'+
-    '<div class="card-row"><div><div class="card-label">'+formatDate(o.date)+'</div><div class="card-value card-brand">'+escapeHtml(o.product || (o.brand ? o.brand + (o.topic ? ' - ' + o.topic : '') : ''))+(currentAccount === 'all' ? '<span class="account-badge '+(o.account||'main')+'">'+accountLabel(o.account)+'</span>' : '')+'</div></div>'+
-    (currentAccount === 'all' ? '<span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span>' : '')+'</div>'+
-    (currentAccount !== 'all' && o.note ? '<div class="card-note" style="margin-top:6px;color:var(--text-muted)">备注：'+escapeHtml(o.note)+'</div>' : '')+
-    '<div class="order-detail-expand" id="orderDetail-'+o.id+'">'+
-      '<div class="card-grid">'+
-        '<div><div class="card-label">报价</div><div class="card-value" style="color:var(--success);font-weight:600">¥'+o.price.toLocaleString()+'</div></div>'+
-        '<div><div class="card-label">成本</div><div class="card-value" style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</div></div>'+
+    '<div class="card-row" style="align-items:center">'+
+      '<div style="min-width:0;flex:1">'+
+        '<div class="card-label">'+formatDate(o.date)+'</div>'+
+        '<div class="card-value card-brand">'+brand+'</div>'+
+        '<div style="margin-top:4px">'+accBadge+'</div>'+
       '</div>'+
-      (o.refund>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">返款</div><div class="card-value" style="color:'+(o.refundDone?'var(--success)':'var(--text-muted)')+';font-weight:600">¥'+o.refund.toLocaleString()+'</div></div><div style="display:flex;align-items:center;gap:6px;align-self:flex-end"><span class="refund-check '+(o.refundDone?'checked':'')+'" style="width:22px;height:22px;border-radius:7px" onclick="event.stopPropagation();toggleRefundStatus(\''+o.id+'\')">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span><span style="font-size:12px;color:var(--text-muted)">'+(o.refundDone?'已返款':'待返款')+'</span></div></div>' : '')+
-      (o.barter>0 ? '<div class="card-grid" style="margin-top:6px"><div><div class="card-label">置换价值</div><div class="card-value" style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</div></div></div>' : '')+
+      '<span class="order-status '+(o.done?'done':'pending')+'"><span class="dot"></span>'+(o.done?'已完成':'待发布')+'</span>'+
     '</div>'+
-    (currentAccount !== 'all' ? '<div class="card-actions">'+
-      '<button class="btn btn-ghost btn-sm order-expand-btn" id="orderExpandBtn-'+o.id+'" onclick="toggleOrderDetail(\''+o.id+'\')">展开详情</button>'+
-    '</div>' : '')+'</div>';
+    noteLine+
+    '<div class="card-grid">'+
+      '<div><div class="card-label">报价</div><div class="card-value" style="color:var(--success);font-weight:600">¥'+o.price.toLocaleString()+'</div></div>'+
+      '<div><div class="card-label">成本</div><div class="card-value" style="color:var(--warning)">¥'+((o.cost||0).toLocaleString())+'</div></div>'+
+    '</div>'+
+    (o.refund>0 ? '<div class="card-grid" style="margin-top:8px"><div><div class="card-label">返款</div><div class="card-value" style="color:'+(o.refundDone?'var(--success)':'var(--text-muted)')+';font-weight:600">¥'+o.refund.toLocaleString()+'</div></div><div style="display:flex;align-items:center;gap:6px;align-self:flex-end"><span class="refund-check '+(o.refundDone?'checked':'')+'" style="width:22px;height:22px;border-radius:7px" onclick="event.stopPropagation();toggleRefundStatus(\''+o.id+'\')">'+(o.refundDone?'<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>':'')+'</span><span style="font-size:12px;color:var(--text-muted)">'+(o.refundDone?'已返款':'待返款')+'</span></div></div>' : '')+
+    (o.barter>0 ? '<div class="card-grid" style="margin-top:8px"><div><div class="card-label">置换价值</div><div class="card-value" style="color:var(--accent);font-weight:600">¥'+o.barter.toLocaleString()+'</div></div></div>' : '')+
+    '<div class="card-actions">'+
+      '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleOrderStatus(\''+o.id+'\')">'+(o.done?'标记待发布':'标记完成')+'</button>'+
+      '<button type="button" class="btn btn-ghost btn-sm" data-order-id="'+escapeHtml(String(o.id))+'" onclick="event.stopPropagation();openOrderModalFromButton(this)">编辑</button>'+
+      '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteOrder(\''+o.id+'\')">删除</button>'+
+    '</div>'+
+  '</div>';
 }
 
 document.querySelectorAll('#orderViewToggle .view-chip').forEach(function(chip) {
@@ -2610,9 +2608,10 @@ function renderOrders() {
     if (mbnOB) { mbnOB.textContent = pendingCount; mbnOB.classList.toggle('show', pendingCount > 0); }
     return;
   }
-  tableWrap.style.display = 'block';
+  // 表格视图：移除内联 display，让 CSS media query 自动切换桌面表格 / 移动端卡片
   calWrap.style.display = 'none';
-  mobileCards.style.display = 'none';
+  tableWrap.style.display = '';
+  mobileCards.style.display = '';
 
   var filtered = orders.filter(function(o) {
     var acc = o.account || 'main';
