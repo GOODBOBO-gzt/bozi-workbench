@@ -421,9 +421,9 @@ body::before {
 .order-status.done .dot { background: var(--success); }
 .order-actions { display: flex; gap: 6px; }
 
-/* 移动端订单卡片 */
-.order-cards-mobile { display: none; flex-direction: column; gap: 12px; }
-.order-card-item { width: 100%; padding: 18px; border-radius: 16px; background: var(--card-bg); border: 1px solid var(--glass-border-light); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.3); }
+/* 移动端订单列表 */
+.order-cards-mobile { display: none; flex-direction: column; }
+.order-card-item { width: 100%; padding: 16px 4px; border-bottom: 1px solid var(--divider); background: transparent; }
 .order-card-item .card-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 12px; }
 .order-card-item .card-label { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
 .order-card-item .card-value { font-size: 14px; color: var(--text-primary); font-weight: 500; }
@@ -941,17 +941,14 @@ body::before {
   }
   .order-view-toggle { width: 100%; justify-content: center; margin: 0; }
 
-  /* ---- 商单表格 / 卡片 ---- */
+  /* ---- 商单表格 / 列表 ---- */
   .order-table-wrap { display: none; }
-  .order-cards-mobile { display: flex; gap: 10px; }
+  .order-cards-mobile { display: flex; }
   .order-card-item {
-    padding: 18px; border-radius: 20px;
-    backdrop-filter: blur(26px) saturate(180%);
-    -webkit-backdrop-filter: blur(26px) saturate(180%);
-    box-shadow: 0 6px 24px rgba(140, 112, 88, 0.1), inset 0 1px 0 rgba(255,255,255,0.3);
-    transition: transform 0.2s ease;
+    padding: 14px 2px; border-bottom: 1px solid var(--divider); background: transparent;
+    transition: background 0.15s ease;
   }
-  .order-card-item:active { transform: scale(0.985); }
+  .order-card-item:active { background: rgba(92,184,154,0.06); }
   .order-card-item .card-brand { font-size: 17px; }
   .order-card-item .card-note { font-size: 17px; }
 
@@ -972,17 +969,14 @@ body::before {
   .first-load-banner .flb-content { font-size: 11px; gap: 8px; }
   .order-card-item .card-value { font-size: 15px; }
 
-  /* ---- 移动端商单：默认显示卡片，表格作为可横向滚动的兜底 ---- */
+  /* ---- 移动端商单：默认显示列表，表格作为可横向滚动的兜底 ---- */
   .order-table-wrap { display: none; }
-  .order-cards-mobile { display: flex; gap: 10px; width: 100%; }
+  .order-cards-mobile { display: flex; width: 100%; }
   .order-card-item {
-    width: 100%; padding: 16px; border-radius: 18px;
-    backdrop-filter: blur(26px) saturate(180%);
-    -webkit-backdrop-filter: blur(26px) saturate(180%);
-    box-shadow: 0 6px 24px rgba(140, 112, 88, 0.1), inset 0 1px 0 rgba(255,255,255,0.3);
-    transition: transform 0.2s ease;
+    width: 100%; padding: 14px 2px; border-bottom: 1px solid var(--divider); background: transparent;
+    transition: background 0.15s ease;
   }
-  .order-card-item:active { transform: scale(0.985); }
+  .order-card-item:active { background: rgba(92,184,154,0.06); }
   .order-card-item .card-brand { font-size: 16px; line-height: 1.35; word-break: break-word; }
   .order-card-item .card-note { font-size: 13px; line-height: 1.45; word-break: break-word; }
   .order-card-item .card-value { font-size: 14px; }
@@ -1064,8 +1058,8 @@ body::before {
   .chart-card h3 { font-size: 12px; margin-bottom: 6px; }
   .chart-container { height: 140px; }
 
-  /* ---- 商单卡片单列 ---- */
-  .order-card-item .card-grid { grid-template-columns: 1fr; }
+  /* ---- 商单列表：窄屏保留双列，充分利用宽度 ---- */
+  .order-card-item .card-grid { grid-template-columns: 1fr 1fr; }
 
   /* ---- 月历更紧凑 ---- */
   .order-calendar-wrap { padding: 8px 4px; border-radius: 14px; }
