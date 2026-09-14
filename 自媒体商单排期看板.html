@@ -113,7 +113,37 @@
   .field textarea{resize:vertical;min-height:48px;}
   .modal-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
   .foot{margin-top:30px;color:var(--muted);font-size:12px;text-align:center;line-height:1.7;}
-  @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr);}}
+  /* ===== 移动端：表格卡片化，撑满屏宽、不重叠 ===== */
+  @media(max-width:720px){
+    /* 整体留白收紧 */
+    .wrap{padding:0 12px 48px;}
+    header{padding:16px 14px 12px;}
+    header h1{font-size:19px;}
+    /* KPI 两列 */
+    .kpis{grid-template-columns:repeat(2,1fr);gap:10px;}
+    /* 对比看板 / 订单表 -> 卡片化 */
+    .panel{overflow:visible;}
+    .cmp-card{overflow:hidden;}
+    table.cmp,table.ord{display:block;min-width:0;width:100%;}
+    table.cmp thead,table.ord thead{display:none;}
+    table.cmp tbody,table.ord tbody{display:block;}
+    table.cmp tr,table.ord tr{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 2px;margin:12px 0;box-shadow:var(--shadow);}
+    table.cmp td,table.ord td{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:right;padding:9px 12px;border-bottom:1px solid var(--line);}
+    table.cmp td:last-child,table.ord td:last-child{border-bottom:none;}
+    table.cmp td::before,table.ord td::before{content:attr(data-label);font-size:12px;font-weight:600;color:var(--muted);text-align:left;flex:0 0 auto;}
+    /* 操作按钮行靠右 */
+    table.ord td[data-label="操作"]{justify-content:flex-end;}
+    /* 账号头部竖排、占满 */
+    .acct-head{flex-direction:column;align-items:stretch;gap:10px;}
+    .acct-kpis{width:100%;}
+    .mini{flex:1 1 0;min-width:0;}
+    .acct-head>div:last-child{width:100%;}
+    #addBtn{width:100%;}
+    /* 月历格子略缩，防溢出 */
+    .cal-grid{gap:4px;}
+    .cal-cell{min-height:54px;}
+    .cal-dow{font-size:11px;}
+  }
 </style>
 </head>
 <body>
@@ -269,19 +299,19 @@ function renderDashboard(){
   ACCOUNTS.forEach((a,i)=>{
     const r=rows[i];
     html += `<tr>
-      <td><span class="acct-name"><span class="dot" style="background:${a.color}"></span>${a.key}</span></td>
-      <td>${r.n}</td>
-      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(r.amount/maxA*100)}%;background:${a.color}"></div></div><span class="bar-num">${money(r.amount)}</span></td>
-      <td>${money(r.cost)}</td>
-      <td>${money(r.rebate)}</td>
-      <td style="color:${r.net>=0?'var(--done)':'var(--pending)'}">${money(r.net)}</td>
-      <td>${r.done}/${r.n}</td>
+      <td data-label="账号"><span class="acct-name"><span class="dot" style="background:${a.color}"></span>${a.key}</span></td>
+      <td data-label="商单数">${r.n}</td>
+      <td class="bar-cell" data-label="收入"><div class="bar-track"><div class="bar-fill" style="width:${(r.amount/maxA*100)}%;background:${a.color}"></div></div><span class="bar-num">${money(r.amount)}</span></td>
+      <td data-label="成本">${money(r.cost)}</td>
+      <td data-label="返款">${money(r.rebate)}</td>
+      <td data-label="净收益" style="color:${r.net>=0?'var(--done)':'var(--pending)'}">${money(r.net)}</td>
+      <td data-label="完成">${r.done}/${r.n}</td>
     </tr>`;
   });
-  html += `<tr class="total"><td>合计</td><td>${all.n}</td>
-      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(all.amount/maxA*100)}%;background:#2b2724"></div></div><span class="bar-num">${money(all.amount)}</span></td>
-      <td>${money(all.cost)}</td><td>${money(all.rebate)}</td>
-      <td style="color:${all.net>=0?'var(--done)':'var(--pending)'}">${money(all.net)}</td><td>${all.done}/${all.n}</td></tr>`;
+  html += `<tr class="total"><td data-label="账号">合计</td><td data-label="商单数">${all.n}</td>
+      <td class="bar-cell" data-label="收入"><div class="bar-track"><div class="bar-fill" style="width:${(all.amount/maxA*100)}%;background:#2b2724"></div></div><span class="bar-num">${money(all.amount)}</span></td>
+      <td data-label="成本">${money(all.cost)}</td><td data-label="返款">${money(all.rebate)}</td>
+      <td data-label="净收益" style="color:${all.net>=0?'var(--done)':'var(--pending)'}">${money(all.net)}</td><td data-label="完成">${all.done}/${all.n}</td></tr>`;
   html += `</tbody>`;
   document.getElementById('cmpTable').innerHTML = html;
 }
@@ -322,15 +352,15 @@ function renderList(){
   }
   list.forEach(o=>{
     html += `<tr>
-      <td>${escapeHtml(o.product||'')}</td>
-      <td>${o.date}</td>
-      <td class="num">${money(o.amount)}</td>
-      <td class="num">${money(o.cost)}</td>
-      <td class="num">${money(o.rebate)}</td>
-      <td class="num">${o.exchange?money(o.exchange):'—'}</td>
-      <td><span class="badge ${o.status==='done'?'done':'pending'}">${o.status==='done'?'已完成':'待发布'}</span></td>
-      <td class="note">${escapeHtml(o.note||'')}</td>
-      <td><div class="row-act">
+      <td data-label="商单/产品">${escapeHtml(o.product||'')}</td>
+      <td data-label="日期">${o.date}</td>
+      <td class="num" data-label="收入">${money(o.amount)}</td>
+      <td class="num" data-label="成本">${money(o.cost)}</td>
+      <td class="num" data-label="返款">${money(o.rebate)}</td>
+      <td class="num" data-label="置换">${o.exchange?money(o.exchange):'—'}</td>
+      <td data-label="状态"><span class="badge ${o.status==='done'?'done':'pending'}">${o.status==='done'?'已完成':'待发布'}</span></td>
+      <td class="note" data-label="备注">${escapeHtml(o.note||'')}</td>
+      <td data-label="操作"><div class="row-act">
         <button class="btn ghost sm" onclick="editOrder(${o.id})">改</button>
         <button class="btn ghost sm" onclick="delOrder(${o.id})">删</button>
       </div></td>
