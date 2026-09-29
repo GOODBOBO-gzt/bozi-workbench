@@ -1,0 +1,34 @@
+name: 基金每日自动更新
+
+on:
+  schedule:
+    - cron: '30 6 * * 1-5'   # 北京时间 14:30
+    - cron: '45 6 * * 1-5'   # 北京时间 14:45
+    - cron: '30 7 * * 1-5'   # 北京时间 15:30
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fund-daily
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 仓库
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 抓取并重算基金数据 + 部署
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python fund_update.py
+          python deploy.py
