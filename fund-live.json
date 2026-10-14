@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-10-14 20:21",
+  "updatedAt": "2026-10-14 21:00",
   "navDate": "2026-10-14",
   "src": "eastmoney-lsjz",
   "totalCost": 131576.27,
-  "totalValue": 81035.62,
-  "totalPnl": -50540.65,
-  "totalRet": -0.384117,
+  "totalValue": 81115.59,
+  "totalPnl": -50460.68,
+  "totalRet": -0.383509,
   "funds": [
     {
       "code": "001438",
@@ -156,24 +156,24 @@
       "name": "华安生态优先混合A",
       "shares": 11107.079470198674,
       "investedCost": 48118.46,
-      "nav": 2.522,
-      "navDate": "2026-10-13",
+      "nav": 2.462,
+      "navDate": "2026-10-14",
       "costNav": 4.332233340826119,
-      "dayChg": 0.64,
-      "estGszzl": -2.663,
-      "curValue": 27265.66,
-      "ret": -0.4333638275206646,
-      "pnl": -20852.8,
+      "dayChg": -2.38,
+      "estGszzl": -2.38,
+      "curValue": 27345.63,
+      "ret": -0.4317018873837608,
+      "pnl": -20772.83,
       "score": 1,
       "advice": "减仓止损",
-      "adviceReason": "当日下跌-2.7% 且深度套牢、质地偏弱，建议控制风险",
+      "adviceReason": "当日下跌-2.4% 且深度套牢、质地偏弱，建议控制风险",
       "gsz": 2.4548,
       "gszzl": -2.663,
       "gztime": "16:02:00",
       "intradayDate": "2026-10-14",
-      "price": 2.4548,
-      "mode": "intraday",
-      "todayChg": -2.663
+      "price": 2.462,
+      "mode": "nav",
+      "todayChg": -2.38
     },
     {
       "code": "162605",
@@ -200,7 +200,7 @@
       "todayChg": -2.82
     }
   ],
-  "mode": "intraday",
-  "intradayDate": "2026-10-14",
-  "intradayAsOf": "16:02:00"
+  "mode": "nav",
+  "intradayDate": "",
+  "intradayAsOf": null
 }
