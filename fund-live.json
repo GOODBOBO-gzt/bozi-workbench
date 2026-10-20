@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-10-20 20:08",
+  "updatedAt": "2026-10-20 20:53",
   "navDate": "2026-10-20",
   "src": "eastmoney-lsjz",
   "totalCost": 131576.27,
-  "totalValue": 76989.45,
-  "totalPnl": -54586.82,
-  "totalRet": -0.414868,
+  "totalValue": 77027.13,
+  "totalPnl": -54549.14,
+  "totalRet": -0.414582,
   "funds": [
     {
       "code": "001438",
@@ -181,13 +181,13 @@
       "shares": 12993.167916907098,
       "investedCost": 34759.43,
       "nav": 1.265,
-      "navDate": "2026-10-19",
+      "navDate": "2026-10-20",
       "costNav": 2.675208249619401,
-      "dayChg": -2.17,
-      "estGszzl": -0.2278,
-      "curValue": 16398.68,
-      "ret": -0.5282235640803086,
-      "pnl": -18360.75,
+      "dayChg": 0.0,
+      "estGszzl": 0.0,
+      "curValue": 16436.36,
+      "ret": -0.5271395417013455,
+      "pnl": -18323.07,
       "score": 0,
       "advice": "减仓止损",
       "adviceReason": "深度亏损且质地偏弱，建议控制风险",
@@ -195,12 +195,12 @@
       "gszzl": -0.2278,
       "gztime": "16:04:00",
       "intradayDate": "2026-10-20",
-      "price": 1.2621,
-      "mode": "intraday",
-      "todayChg": -0.2278
+      "price": 1.265,
+      "mode": "nav",
+      "todayChg": 0.0
     }
   ],
-  "mode": "intraday",
-  "intradayDate": "2026-10-20",
-  "intradayAsOf": "16:04:00"
+  "mode": "nav",
+  "intradayDate": "",
+  "intradayAsOf": null
 }
