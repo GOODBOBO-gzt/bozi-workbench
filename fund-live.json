@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-10-21 20:22",
+  "updatedAt": "2026-10-21 21:06",
   "navDate": "2026-10-21",
   "src": "eastmoney-lsjz",
   "totalCost": 131576.27,
-  "totalValue": 77253.13,
-  "totalPnl": -54323.14,
-  "totalRet": -0.412864,
+  "totalValue": 77350.58,
+  "totalPnl": -54225.69,
+  "totalRet": -0.412124,
   "funds": [
     {
       "code": "001438",
@@ -180,14 +180,14 @@
       "name": "景顺长城鼎益混合(LOF)A",
       "shares": 12993.167916907098,
       "investedCost": 34759.43,
-      "nav": 1.265,
-      "navDate": "2026-10-20",
+      "nav": 1.263,
+      "navDate": "2026-10-21",
       "costNav": 2.675208249619401,
-      "dayChg": 0.0,
-      "estGszzl": -0.7475,
-      "curValue": 16312.92,
-      "ret": -0.5306908082209634,
-      "pnl": -18446.51,
+      "dayChg": -0.16,
+      "estGszzl": -0.16,
+      "curValue": 16410.37,
+      "ret": -0.5278872524664531,
+      "pnl": -18349.06,
       "score": 0,
       "advice": "减仓止损",
       "adviceReason": "深度亏损且质地偏弱，建议控制风险",
@@ -195,12 +195,12 @@
       "gszzl": -0.7475,
       "gztime": "16:04:00",
       "intradayDate": "2026-10-21",
-      "price": 1.2555,
-      "mode": "intraday",
-      "todayChg": -0.7475
+      "price": 1.263,
+      "mode": "nav",
+      "todayChg": -0.16
     }
   ],
-  "mode": "intraday",
-  "intradayDate": "2026-10-21",
-  "intradayAsOf": "16:04:00"
+  "mode": "nav",
+  "intradayDate": "",
+  "intradayAsOf": null
 }
