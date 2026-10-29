@@ -1,35 +1,35 @@
 {
-  "updatedAt": "2026-10-29 21:33",
+  "updatedAt": "2026-10-29 21:41",
   "navDate": "2026-10-29",
   "src": "eastmoney-lsjz",
   "totalCost": 131576.27,
-  "totalValue": 69931.23,
-  "totalPnl": -61645.04,
-  "totalRet": -0.468512,
+  "totalValue": 69942.25,
+  "totalPnl": -61634.02,
+  "totalRet": -0.468428,
   "funds": [
     {
       "code": "001438",
       "name": "易方达瑞享混合E",
       "shares": 1211.5697242710755,
       "investedCost": 11394.28,
-      "nav": 0,
-      "navDate": "",
+      "nav": 5.9633,
+      "navDate": "2026-10-29",
       "costNav": 9.40455986291273,
-      "dayChg": 0,
-      "estGszzl": -8.8488,
-      "curValue": 7213.93,
-      "ret": -0.36688145279912376,
-      "pnl": -4180.35,
+      "dayChg": -8.71,
+      "estGszzl": -8.71,
+      "curValue": 7224.95,
+      "ret": -0.36591430085972965,
+      "pnl": -4169.33,
       "score": 5,
       "advice": "逢低小补",
-      "adviceReason": "当日下跌-8.8% 且深度套牢，优质基可小额定投摊薄",
+      "adviceReason": "当日下跌-8.7% 且深度套牢，优质基可小额定投摊薄",
       "gsz": 5.9542,
       "gszzl": -8.8488,
       "gztime": "16:03:00",
       "intradayDate": "2026-10-29",
-      "price": 5.9542,
-      "mode": "intraday",
-      "todayChg": -8.8488
+      "price": 5.9633,
+      "mode": "nav",
+      "todayChg": -8.71
     },
     {
       "code": "001753",
@@ -200,7 +200,7 @@
       "todayChg": -2.8
     }
   ],
-  "mode": "intraday",
-  "intradayDate": "2026-10-29",
-  "intradayAsOf": "16:03:00"
+  "mode": "nav",
+  "intradayDate": "",
+  "intradayAsOf": null
 }
